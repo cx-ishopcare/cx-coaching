@@ -1,184 +1,2258 @@
-const SHEET_NAME = "코칭기록";
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>상담사 모니터링·코칭 관리 | CX팀 아이샵케어</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
 
-/* QA 항목 (cat: 대항목 / max: 배점 / name: 항목명) — 순서·배점은 index.html 과 반드시 동일해야 함 */
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ⚙️  여기만 수정하세요
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+const SHEET_ID        = "17Ba9GurK4X5G2Af10FqzMPu6BDz7oGXdknZOlbwjH74";
+const API_KEY         = "AIzaSyBxZ5GX8xCm6bwSc8LrL3jQxVhHmwobGsg";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNnEXmR994aanuUrqHeXvqMeL3YLDG0sYPasetW4-0x7o2sTLo5DR-eHbm-QgeA9lq/exec";
+</script>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+
+<style>
+:root {
+  --bl:#3E749F; --bld:#2E6088; --bll:#F7FBFE; --blb:#E0EFF8;
+  --gn:#ECFDF5; --gnt:#065F46; --gnb:#A7F3D0;
+  --wn:#FFFBEB; --wnt:#92400E; --wnb:#FCD34D;
+  --rd:#FEF2F2; --rdt:#991B1B; --rdb:#FCA5A5;
+  --bg:#F8FAFC; --card:#fff;  --br:#E2E8F0;
+  --tx:#0F172A; --mt:#64748B;
+  --r:14px; --rsm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:15px;line-height:1.6;}
+.hidden{display:none!important;}
+
+/* ── 로딩 ── */
+#loadingScreen{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1rem;
+}
+.spinner{width:38px;height:38px;border:3px solid var(--blb);border-top-color:var(--bl);border-radius:50%;animation:spin .8s linear infinite;}
+
+/* 금일 콜수 */
+.daily-box{background:var(--bll);border:1.5px solid var(--blb);border-radius:10px;padding:14px 16px;}
+.daily-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:10px;}
+.daily-card{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.daily-day{font-size:10px;font-weight:700;color:var(--mt);text-align:center;}
+.daily-date{font-size:10px;color:var(--mt);text-align:center;}
+.daily-inp{width:100%;padding:7px 4px;border:1.5px solid var(--blb);border-radius:7px;font-size:14px;font-weight:700;font-family:inherit;background:#fff;color:var(--bld);text-align:center;outline:none;}
+.daily-inp:focus{border-color:var(--bl);box-shadow:0 0 0 2px rgba(62,116,159,.1);}
+.daily-inp.today{border-color:var(--bl);}
+.daily-footer{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--blb);}
+.daily-total-lbl{font-size:12px;color:var(--mt);}
+.daily-total-val{font-size:14px;font-weight:700;color:var(--bld);}
+.daily-avg{font-size:12px;color:var(--mt);}
+
+/* 수정 버튼 & 수정 모드 */
+.hist-action-bar{display:flex;justify-content:flex-end;padding:8px 16px 0;}
+.btn-edit{display:flex;align-items:center;gap:5px;padding:5px 12px;background:#fff;border:1.5px solid var(--blb);border-radius:7px;color:var(--bld);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
+.btn-edit:hover{background:var(--bll);}
+.btn-delete{display:flex;align-items:center;gap:5px;padding:5px 12px;background:#fff;border:1.5px solid var(--rdb);border-radius:7px;color:var(--rdt);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
+.btn-delete:hover{background:var(--rd);}
+.edit-mode{display:none;border-top:2px solid var(--bl);background:#fff;}
+.edit-mode.open{display:block;}
+.edit-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--br);background:var(--bll);}
+.edit-header-title{font-size:13px;font-weight:700;color:var(--bld);}
+.edit-btns{display:flex;gap:8px;}
+.btn-edit-cancel{padding:5px 12px;background:#fff;border:1.5px solid var(--br);border-radius:7px;font-size:12px;font-weight:600;font-family:inherit;color:var(--mt);cursor:pointer;}
+.btn-edit-save{padding:5px 12px;background:var(--bl);border:none;border-radius:7px;font-size:12px;font-weight:600;font-family:inherit;color:#fff;cursor:pointer;}
+.btn-edit-save:hover{background:var(--bld);}
+.edit-body{padding:14px 16px;display:grid;gap:14px;}
+.edit-tbl{width:100%;border-collapse:collapse;table-layout:fixed;}
+.edit-tbl th{background:#F1F5F9;padding:7px 10px;font-size:10px;font-weight:700;color:var(--mt);text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--br);}
+.edit-tbl td{padding:7px 10px;border-bottom:1px solid #F1F5F9;font-size:13px;vertical-align:middle;}
+.edit-tbl tr:last-child td{border-bottom:none;}
+.edit-inp{width:100%;padding:5px 8px;border:1.5px solid var(--br);border-radius:6px;font-size:12px;font-family:inherit;background:#fff;color:var(--tx);outline:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:14px;color:var(--mt);}
+
+/* ── 팀원 선택 화면 ── */
+#selectScreen{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2rem;
+  background:linear-gradient(160deg,#F7FBFE 0%,#F5F9FD 55%,#F8FAFC 100%);
+  padding:2.5rem 1rem;
+}
+.brand{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+.brand-mark{width:60px;height:60px;background:var(--bl);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:27px;}
+.brand-name{font-size:22px;font-weight:700;color:var(--tx);letter-spacing:-.03em;}
+.brand-sub{font-size:14px;color:var(--mt);}
+
+.sel-card{
+  background:var(--card);border:1px solid var(--br);border-radius:var(--r);
+  padding:2rem 2.25rem;width:100%;max-width:480px;
+  box-shadow:0 4px 24px rgba(0,0,0,.06);
+}
+.sel-title{font-size:16px;font-weight:700;color:var(--tx);margin-bottom:4px;}
+.sel-sub{font-size:13px;color:var(--mt);margin-bottom:1.75rem;}
+
+/* 스쿼드 그룹 */
+.squad-section{margin-bottom:1.5rem;}
+.squad-section:last-child{margin-bottom:0;}
+.squad-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.squad-label{
+  font-size:11px;font-weight:700;color:var(--bld);text-transform:uppercase;
+  letter-spacing:.07em;background:var(--bll);border:1px solid var(--blb);
+  padding:4px 12px;border-radius:999px;white-space:nowrap;
+}
+.squad-line{flex:1;height:1px;background:var(--br);}
+.squad-count{font-size:11px;color:var(--mt);white-space:nowrap;}
+
+.member-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.member-btn{
+  padding:14px 8px;border:1.5px solid var(--br);border-radius:var(--rsm);
+  background:var(--card);color:var(--tx);font-size:13px;font-weight:500;
+  cursor:pointer;text-align:center;transition:all .15s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-family:inherit;
+}
+.member-btn:hover{border-color:var(--bl);background:var(--bll);color:var(--bld);transform:translateY(-1px);box-shadow:0 2px 8px rgba(62,116,159,.1);}
+.member-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--bll);color:var(--bld);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;
+}
+.sel-hint{font-size:12px;color:var(--mt);text-align:center;margin-top:1.25rem;}
+.sel-err{font-size:13px;color:var(--rdt);text-align:center;padding:1.5rem;background:var(--rd);border-radius:var(--rsm);border:1px solid var(--rdb);}
+
+/* ── 앱 ── */
+#appScreen{display:none;}
+.topbar{
+  background:var(--bl);height:58px;padding:0 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(62,116,159,.25);
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.topbar-title{color:#fff;font-size:16px;font-weight:700;letter-spacing:-.02em;}
+.topbar-tag{background:rgba(255,255,255,.18);color:rgba(255,255,255,.9);font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);}
+.back-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:var(--rsm);font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;transition:background .15s;}
+.back-btn:hover{background:rgba(255,255,255,.25);}
+
+.page{max-width:860px;margin:0 auto;padding:2rem 1.5rem 5rem;}
+
+/* 팀원 헤더 */
+.member-hero{
+  background:var(--bl);border-radius:var(--r);
+  padding:1.75rem 2rem;margin-bottom:1.25rem;
+  display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;
+}
+.hero-avatar{display:none;}
+.hero-name{font-size:21px;font-weight:700;color:#fff;letter-spacing:-.03em;}
+.hero-meta{font-size:13px;color:rgba(255,255,255,.75);margin-top:4px;display:flex;align-items:center;gap:8px;}
+.hero-squad-badge{background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:600;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.3);}
+.hero-stats{margin-left:auto;display:flex;gap:24px;}
+.stat{text-align:center;}
+.stat-num{font-size:24px;font-weight:700;color:#fff;}
+.stat-lbl{font-size:11px;color:rgba(255,255,255,.65);margin-top:2px;}
+
+/* 탭 */
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--br);border-radius:var(--r);padding:6px;margin-bottom:1.25rem;}
+.tab-btn{flex:1;padding:9px;border:none;border-radius:calc(var(--r) - 4px);background:transparent;color:var(--mt);font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;}
+.tab-btn.active{background:var(--bl);color:#fff;box-shadow:0 2px 8px rgba(62,116,159,.3);}
+.tab-btn:hover:not(.active){background:var(--bll);color:var(--bl);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* 카드 */
+.card{background:var(--card);border:1px solid var(--br);border-radius:var(--r);margin-bottom:1.25rem;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.card-head{background:var(--bl);padding:10px 18px;}
+.card-head-title{color:#fff;font-size:14px;font-weight:700;letter-spacing:-.01em;}
+.card-body{padding:1.25rem 1.5rem;}
+
+/* 폼 */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;}
+.field input,.field select,.field textarea{
+  padding:10px 13px;border:1.5px solid var(--br);border-radius:var(--rsm);
+  font-size:14px;font-family:inherit;background:var(--bg);color:var(--tx);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--bl);box-shadow:0 0 0 3px rgba(62,116,159,.1);background:#fff;}
+.field textarea{resize:vertical;min-height:78px;}
+
+/* 모니터링 테이블 */
+.mon-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.mon-table thead th{background:#F1F5F9;padding:9px 14px;font-size:11px;font-weight:700;color:var(--mt);text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--br);}
+.mon-table tbody td{padding:11px 14px;border-bottom:1px solid #F1F5F9;font-size:14px;vertical-align:middle;}
+.mon-table tbody tr:last-child td{border-bottom:none;}
+.mon-table tbody tr:hover td{background:#FAFBFF;}
+.col-item{width:37%;font-weight:500;}
+.col-res{width:22%;}
+.col-det{width:41%;}
+
+.res-sel{
+  display:inline-block;padding:5px 26px 5px 12px;border-radius:999px;
+  font-size:13px;font-weight:700;font-family:inherit;border:none;cursor:pointer;outline:none;
+  -webkit-appearance:none;appearance:none;
+  background-repeat:no-repeat;background-position:right 8px center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  min-width:106px;transition:box-shadow .15s;
+}
+.res-sel:focus{box-shadow:0 0 0 2px rgba(62,116,159,.25);}
+.res-sel.ok  {background-color:var(--gn);color:var(--gnt);}
+.res-sel.warn{background-color:var(--wn);color:var(--wnt);}
+.res-sel.bad {background-color:var(--rd);color:var(--rdt);}
+
+.det-inp{width:100%;padding:7px 11px;border:1.5px solid var(--br);border-radius:var(--rsm);font-size:13px;font-family:inherit;background:#fff;color:var(--tx);outline:none;transition:border-color .15s,box-shadow .15s;}
+.det-inp:focus{border-color:var(--bl);box-shadow:0 0 0 3px rgba(62,116,159,.1);}
+
+/* QA 평가표 */
+.qa-total-bar{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--bll);border-bottom:1px solid var(--blb);}
+.qa-total-track{flex:1;height:8px;border-radius:999px;background:#fff;overflow:hidden;}
+.qa-total-fill{height:100%;background:var(--bl);border-radius:999px;transition:width .2s;}
+.qa-total-badge{font-size:14px;font-weight:700;color:var(--bld);white-space:nowrap;}
+.qa-cat{border-bottom:1px solid var(--br);}
+.qa-cat:last-child{border-bottom:none;}
+.qa-cat-head{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#FAFBFC;}
+.qa-cat-head span:first-child{font-size:13px;font-weight:700;color:var(--tx);}
+.qa-cat-max{font-size:11px;font-weight:700;color:var(--mt);}
+.qa-item{padding:10px 18px;border-top:1px solid #F1F5F9;}
+.qa-item-top{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.qa-item-name{font-size:13px;color:var(--tx);flex:1;}
+.qa-score-sel{
+  padding:5px 26px 5px 12px;border-radius:999px;border:1.5px solid var(--br);
+  font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;outline:none;background-color:#fff;color:var(--tx);
+  -webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right 8px center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  min-width:84px;flex-shrink:0;
+}
+.qa-score-sel.full{background-color:var(--gn);color:var(--gnt);border-color:var(--gnb);}
+.qa-score-sel.zero{background-color:var(--rd);color:var(--rdt);border-color:var(--rdb);}
+.qa-score-sel.partial{background-color:var(--wn);color:var(--wnt);border-color:var(--wnb);}
+.qa-memo{overflow:hidden;width:100%;margin-top:8px;padding:7px 11px;border:1.5px solid var(--wnb);border-radius:var(--rsm);font-size:12px;line-height:1.55;font-family:inherit;background:var(--wn);color:var(--tx);outline:none;resize:vertical;min-height:40px;white-space:pre-wrap;display:block;}
+.stt-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 8px;}
+.stt-tools select,.stt-tools input{padding:7px 10px;border:1.5px solid var(--br);border-radius:var(--rsm);font-size:12px;font-family:inherit;background:#fff;color:var(--tx);outline:none;}
+.stt-tools select{flex:1;min-width:180px;}
+.stt-tools input{width:130px;}
+.stt-viewer{max-height:320px;overflow:auto;border:1px solid var(--br);border-radius:var(--rsm);background:#fff;}
+.stt-line{display:flex;gap:8px;padding:6px 10px;font-size:12px;line-height:1.55;cursor:pointer;border-bottom:1px solid #F1F5F9;}
+.stt-line:last-child{border-bottom:none;}
+.stt-line:hover{background:var(--bll);}
+.stt-line.cited{background:#FFFBEB;}
+.stt-line.hidden{display:none;}
+.stt-time{color:var(--mt);flex-shrink:0;width:58px;font-variant-numeric:tabular-nums;}
+.stt-sp{flex-shrink:0;width:42px;font-weight:700;}
+.stt-line.agent .stt-sp{color:var(--bld);}
+.stt-line.cust .stt-sp{color:#64748B;}
+.stt-note{font-size:11px;color:var(--mt);margin-top:8px;line-height:1.6;}
+.qa-item.target{background:var(--bll);}
+.qa-guide{margin-top:6px;padding:7px 10px;border-radius:6px;background:#F8FAFC;border:1px solid #EEF2F6;font-size:11px;line-height:1.6;color:var(--mt);}
+.qa-guide b{color:var(--bld);margin-right:4px;}
+.qa-guide .ded b{color:#B45309;}
+.hide-guide .qa-guide{display:none;}
+.guide-toggle{font-size:12px;color:#fff;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;}
+.mini-btn{padding:4px 10px;border:1px solid var(--blb);border-radius:999px;background:#fff;color:var(--bld);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;}
+.mini-btn:hover{background:var(--bll);}
+/* 오른쪽 고정 패널 (녹취록 · QA 세부평가표) */
+.new-layout{display:flex;flex-direction:column;gap:16px;}
+.new-main{min-width:0;}
+.side-panel{order:-1;background:#fff;border:1px solid var(--br);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;}
+.side-tabs{display:flex;border-bottom:1px solid var(--br);background:#FAFBFC;flex-shrink:0;}
+.side-tab{flex:1;padding:11px 8px;border:none;background:transparent;font-size:12px;font-weight:700;font-family:inherit;color:var(--mt);cursor:pointer;border-bottom:2px solid transparent;}
+.side-tab.active{color:var(--bld);border-bottom-color:var(--bl);background:#fff;}
+.side-body{padding:12px 14px;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;}
+.side-body.hidden{display:none;}
+#sttWrap{flex:1;min-height:0;flex-direction:column;}
+.stt-viewer{flex:1;min-height:200px;max-height:340px;}
+.ref-cat{margin:10px 0 4px;padding:6px 10px;background:var(--bll);border-radius:6px;font-size:12px;font-weight:700;color:var(--bld);display:flex;justify-content:space-between;}
+.ref-item{padding:8px 4px;border-bottom:1px solid #F1F5F9;font-size:12px;line-height:1.6;}
+.ref-item .nm{font-weight:700;color:var(--tx);}
+.ref-item .pt{float:right;font-size:11px;font-weight:700;color:var(--bld);}
+.ref-item .gd{color:var(--mt);margin-top:2px;}
+.ref-item .dd{color:#B45309;margin-top:2px;}
+@media (min-width:1180px){
+  .page{max-width:1380px;}
+  .new-layout{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:16px;align-items:start;}
+  .new-main{grid-column:1;grid-row:1;}
+  .side-panel{order:0;grid-column:2;grid-row:1;position:sticky;top:70px;height:calc(100vh - 86px);}
+  .stt-viewer{max-height:none;}
+}
+#tab-history{max-width:860px;margin-left:auto;margin-right:auto;}
+/* 코칭 결과: 칸으로 나눈 편집 화면 */
+.cg-box{border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;background:#fff;margin-bottom:12px;}
+.cg-title{font-size:12px;font-weight:700;color:var(--bld);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.cg-hint{font-weight:400;color:var(--mt);font-size:11px;}
+.cg-title2{font-size:12px;font-weight:700;color:var(--bld);margin:4px 0 8px;}
+.cc-list{counter-reset:cc;display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+.cc-empty{font-size:12px;color:var(--mt);padding:14px;border:1px dashed var(--br);border-radius:var(--rsm);text-align:center;}
+.cc{counter-increment:cc;border:1px solid var(--blb);border-radius:var(--rsm);overflow:hidden;background:#fff;}
+.cc-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bll);border-bottom:1px solid var(--blb);}
+.cc-no::before{content:counter(cc);display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--bl);color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;}
+.cc-name{flex:1;font-size:13px;font-weight:700;color:var(--tx);}
+.cc-score{font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px;}
+.cc-x{border:none;background:transparent;color:var(--mt);cursor:pointer;font-size:14px;padding:2px 6px;}
+.cc-x:hover{color:var(--rdt);}
+.cc-row{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start;padding:7px 12px;border-top:1px solid #F1F5F9;}
+.cc-row:first-of-type{border-top:none;}
+.cc-lbl{font-size:11px;font-weight:700;color:var(--mt);padding-top:7px;}
+.cc-ta{width:100%;border:1px solid var(--br);border-radius:6px;padding:6px 9px;font-size:12px;line-height:1.6;font-family:inherit;color:var(--tx);outline:none;resize:none;overflow:hidden;background:#fff;box-sizing:border-box;}
+.cc-ta:focus{border-color:var(--bl);box-shadow:0 0 0 3px rgba(62,116,159,.1);}
+.field .cc-ta,.cc .cc-ta,.cg-box .cc-ta{min-height:0;padding:6px 9px;font-size:12px;line-height:1.6;border:1px solid var(--br);border-radius:6px;resize:none;background:#fff;}
+.field .cc-add select{padding:6px 10px;font-size:12px;border:1.5px solid var(--br);}
+.cc-sc{display:flex;flex-direction:column;gap:6px;}
+.cc-scr{display:flex;gap:6px;align-items:flex-start;}
+.cc-scr .cc-ta{flex:1;min-width:0;}
+.cc-sn{flex:0 0 18px;height:18px;margin-top:6px;border-radius:50%;background:var(--bll);color:var(--bld);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.cc-add{display:flex;gap:8px;align-items:center;}
+.cc-add select{flex:1;min-width:0;padding:6px 10px;border:1.5px solid var(--br);border-radius:var(--rsm);font-size:12px;font-family:inherit;background:#fff;}
+.qa-auto{font-size:10px;color:var(--mt);margin-left:8px;font-weight:400;white-space:nowrap;}
+.qa-auto.changed{color:#B45309;font-weight:700;}
+.qa-flag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#FEF3C7;color:#92400E;white-space:nowrap;margin-left:6px;}
+.qa-flag.na{background:#F1F5F9;color:#64748B;}
+.qa-flag.est{background:#EDE9FE;color:#5B21B6;}
+.qa-flag.hidden,.qa-hint.hidden{display:none;}
+.qa-hint{font-size:11px;color:#92400E;margin-top:6px;line-height:1.5;}
+.auto-btn{padding:9px 16px;border:none;border-radius:var(--rsm);background:var(--bl);color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.auto-result{margin-top:12px;padding:12px 14px;border-radius:var(--rsm);background:var(--bll);border:1px solid var(--blb);font-size:13px;line-height:1.65;color:var(--tx);}
+.auto-result.hidden{display:none;}
+.qa-memo.hidden{display:none;}
+
+/* 코칭 기록 */
+.history-empty{text-align:center;padding:3rem 2rem;color:var(--mt);font-size:14px;}
+.hist-header{padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.hist-header:hover{background:#FAFBFF;}
+.hist-left{display:flex;flex-direction:column;gap:6px;flex:1;}
+.hist-chevron{font-size:18px;color:var(--mt);transition:transform .2s;flex-shrink:0;line-height:1;}
+.hist-chevron.open{transform:rotate(180deg);}
+.hist-detail{display:none;border-top:1px solid var(--br);background:#FAFBFF;padding:14px 16px;}
+.hist-detail.open{display:block;}
+.detail-section{margin-bottom:14px;}
+.detail-section:last-child{margin-bottom:0;}
+.detail-label{font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.detail-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.detail-table td{padding:6px 10px;font-size:13px;border-bottom:1px solid var(--br);}
+.detail-table tr:last-child td{border-bottom:none;}
+.detail-table .dt-item{color:var(--mt);width:38%;}
+.detail-result{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;}
+.dr-ok{background:var(--gn);color:var(--gnt);}
+.dr-warn{background:var(--wn);color:var(--wnt);}
+.dr-bad{background:var(--rd);color:var(--rdt);}
+.detail-text{font-size:13px;color:var(--tx);line-height:1.6;background:var(--card);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;}
+
+.chg-up{color:var(--gnt);}
+.chg-dn{color:var(--rdt);}
+.hist-item{border:1.5px solid var(--br);border-radius:var(--rsm);margin-bottom:10px;overflow:hidden;transition:all .15s;}
+.hist-item:hover{border-color:var(--blb);background:var(--bll);}
+.hist-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.hist-date{font-size:14px;font-weight:700;color:var(--tx);}
+.hist-mon{font-size:12px;color:var(--mt);}
+.hist-badges{display:flex;gap:6px;flex-wrap:wrap;}
+.badge{padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;}
+.b-ok  {background:var(--gn);color:var(--gnt);border:1px solid var(--gnb);}
+.b-warn{background:var(--wn);color:var(--wnt);border:1px solid var(--wnb);}
+.b-bad {background:var(--rd);color:var(--rdt);border:1px solid var(--rdb);}
+.hist-note{font-size:12px;color:var(--mt);margin-top:8px;padding-top:8px;border-top:1px solid var(--br);line-height:1.5;}
+
+/* 액션 */
+.action-bar{display:flex;gap:12px;margin-top:1.5rem;}
+.btn-save{flex:1;padding:13px;background:var(--bl);color:#fff;border:none;border-radius:var(--rsm);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-save:hover{background:var(--bld);}
+.btn-save:active{transform:scale(.99);}
+.btn-save:disabled{background:#CBD5E1;cursor:not-allowed;}
+.btn-reset{padding:13px 22px;background:#fff;color:var(--mt);border:1.5px solid var(--br);border-radius:var(--rsm);font-size:14px;font-family:inherit;cursor:pointer;transition:background .15s;}
+.btn-reset:hover{background:var(--bg);}
+/* 코칭 내용 입력창 */
+.text-area{overflow:hidden;width:100%;min-height:90px;padding:9px 11px;border:1.5px solid var(--br);border-radius:var(--rsm);background:#fff;outline:none;font-size:14px;line-height:1.7;color:var(--tx);font-family:inherit;resize:vertical;transition:border-color .15s,box-shadow .15s;}
+.text-area:focus{border-color:var(--bl);box-shadow:0 0 0 3px rgba(62,116,159,.1);}
+.text-area::placeholder{color:#CBD5E1;}
+
+.toast{margin-top:1rem;padding:12px 16px;border-radius:var(--rsm);font-size:14px;font-weight:500;display:none;align-items:center;gap:8px;}
+.toast.ok {background:var(--gn);color:var(--gnt);border:1px solid var(--gnb);}
+.toast.err{background:var(--rd);color:var(--rdt);border:1px solid var(--rdb);}
+.dot{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+
+/* 임시저장 사이드바 */
+.app-layout{display:flex;position:relative;}
+.draft-sidebar{width:0;overflow:hidden;transition:width .25s ease;flex-shrink:0;background:#fff;border-right:1px solid var(--br);position:relative;z-index:50;}
+.draft-sidebar.open{width:196px;}
+.sb-inner{width:196px;padding:12px;}
+.sb-title{font-size:10px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.sb-close{background:none;border:none;cursor:pointer;font-size:14px;color:var(--mt);padding:0;line-height:1;}
+.sb-empty{font-size:12px;color:var(--mt);text-align:center;padding:1.5rem 0;}
+.draft-item{padding:8px 10px;border:1px solid var(--br);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .15s;position:relative;}
+.draft-item:hover{border-color:var(--blb);background:var(--bll);}
+.draft-item-name{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:2px;padding-right:16px;}
+.draft-item-time{font-size:10px;color:var(--mt);line-height:1.4;}
+.draft-item-del{position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;font-size:11px;color:var(--mt);padding:0;line-height:1;}
+.draft-item-del:hover{color:var(--rdt);}
+.app-main{flex:1;min-width:0;}
+/* 플로팅 임시저장 버튼 */
+.float-draft{position:fixed;bottom:28px;right:28px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:200;display:none;}
+.float-draft.visible{display:flex;}
+.float-btn-save{display:flex;align-items:center;gap:7px;padding:10px 18px;background:var(--bl);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px rgba(62,116,159,.35);transition:all .15s;}
+.float-btn-save:hover{background:var(--bld);transform:translateY(-1px);}
+.float-btn-list{display:none;align-items:center;gap:6px;padding:7px 14px;background:#fff;color:var(--bld);border:1.5px solid var(--blb);border-radius:999px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .15s;}
+.float-btn-list:hover{background:var(--bll);}
+.float-btn-list.on{display:flex;}
+.float-dot{width:7px;height:7px;background:#E24B4A;border-radius:50%;flex-shrink:0;}
+
+@media(max-width:600px){
+  .form-grid{grid-template-columns:1fr;}
+  .topbar{padding:0 1rem;}
+  .topbar-tag{display:none;}
+  .page{padding:1rem 1rem 4rem;}
+  .hero-stats{display:none;}
+  .mon-table .col-det,.mon-table thead th:last-child{display:none;}
+  .member-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingScreen" class="hidden">
+  <div class="spinner"></div>
+  <div class="loading-text">팀원 목록 불러오는 중...</div>
+</div>
+
+
+<!-- 암호 화면 -->
+<div id="lockScreen" style="min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background:linear-gradient(160deg,#F7FBFE 0%,#F5F9FD 55%,#F8FAFC 100%);padding:2rem;">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;">
+    <div style="width:60px;height:60px;background:#3E749F;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:27px;">🎧</div>
+    <div style="font-size:22px;font-weight:700;color:#0F172A;letter-spacing:-.03em;">상담사 모니터링 · 코칭 관리</div>
+    <div style="font-size:14px;color:#64748B;">CX팀 아이샵케어 · 관리자 전용</div>
+  </div>
+  <div style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:2rem 2.25rem;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(0,0,0,.06);">
+    <div style="font-size:16px;font-weight:700;color:#0F172A;margin-bottom:4px;">🔒 접근 암호 입력</div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:1.5rem;">관리자만 접근할 수 있어요.</div>
+    <input type="password" id="lockInput" placeholder="암호를 입력하세요"
+      style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:15px;font-family:inherit;outline:none;margin-bottom:10px;"
+      onkeydown="if(event.key==='Enter') checkLock()"/>
+    <button onclick="checkLock()"
+      style="width:100%;padding:12px;background:#3E749F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">
+      입장하기
+    </button>
+    <div id="lockErr" style="font-size:13px;color:#991B1B;margin-top:8px;min-height:20px;"></div>
+  </div>
+</div>
+
+<!-- 팀원 선택 -->
+<div id="selectScreen" class="hidden">
+  <div class="brand">
+    <div class="brand-mark">🎧</div>
+    <div class="brand-name">상담사 모니터링 · 코칭 관리</div>
+    <div class="brand-sub">CX팀 아이샵케어</div>
+  </div>
+  <div class="sel-card">
+    <div class="sel-title">👥 팀원을 선택하세요</div>
+    <div class="sel-sub">스쿼드별로 구분돼요. Google Sheets에 추가하면 자동으로 나타나요.</div>
+    <div id="squadWrap"></div>
+    <div class="sel-hint">팀원 선택 시 해당 팀원 전용 코칭 시트로 이동해요</div>
+  </div>
+</div>
+
+<!-- 메인 앱 -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon">🎧</div>
+      <span class="topbar-title">모니터링 · 코칭</span>
+      <span class="topbar-tag">CX팀 아이샵케어</span>
+    </div>
+    <button class="back-btn" onclick="goSelect()">← 팀원 선택</button>
+  </div>
+
+  <div class="app-layout">
+    <!-- 임시저장 사이드바 -->
+    <div class="draft-sidebar" id="draftSidebar">
+      <div class="sb-inner">
+        <div class="sb-title">
+          💾 임시저장
+          <button class="sb-close" onclick="toggleDraftSidebar()">✕</button>
+        </div>
+        <div id="draftSidebarList"><div class="sb-empty">저장된 내용이 없어요.</div></div>
+      </div>
+    </div>
+    <!-- 메인 -->
+    <div class="app-main">
+  <div class="page">
+
+    <!-- 팀원 헤더 -->
+    <div class="member-hero">
+      <div>
+        <div class="hero-name" id="heroName">-</div>
+        <div class="hero-meta">
+          <span class="hero-squad-badge" id="heroSquad">-</span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><div class="stat-num" id="statCount">0</div><div class="stat-lbl">총 코칭</div></div>
+      </div>
+    </div>
+
+    <!-- 탭 -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('new', this)">✏️ 새 코칭 입력</button>
+      <button class="tab-btn" onclick="switchTab('history', this)">📂 코칭 기록</button>
+    </div>
+
+    <!-- 기록 탭 -->
+    <div class="tab-pane" id="tab-history">
+      <div class="card">
+        <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="card-head-title">📂 코칭 기록</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div id="filterBadge" style="display:none;background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;align-items:center;gap:5px;cursor:pointer;" onclick="clearDateFilter()">
+              <span id="filterLabel"></span> ✕
+            </div>
+            <div style="position:relative;display:flex;align-items:center;">
+              <div style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;">📅</div>
+              <input type="date" id="histDateFilter" onchange="applyDateFilter()" style="position:absolute;right:0;top:0;width:30px;height:30px;opacity:0;cursor:pointer;"/>
+            </div>
+          </div>
+        </div>
+        <div class="card-body"><div id="historyList"><div class="history-empty">아직 코칭 기록이 없어요.</div></div></div>
+      </div>
+    </div>
+
+    <!-- 새 코칭 탭 -->
+    <div class="tab-pane active" id="tab-new">
+<div class="new-layout">
+<div class="new-main">
+
+      <!-- 기본 정보 -->
+      <div class="card">
+        <div class="card-head"><span class="card-head-title">👤 기본 정보</span></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field"><label>평가 작성 일자</label><input type="date" id="f-date"/></div>
+            <div class="field"><label>모니터링 진행자</label><input type="text" id="f-monitor" placeholder="진행자 이름"/></div>
+          </div>
+          <div class="field" style="margin-top:12px;">
+            <label>📋 이전 기록 불러오기 <span style="font-weight:400;color:#94a3b8;">(점수·메모·코칭 내용을 복사해서 새 기록으로 시작해요)</span></label>
+            <div style="display:flex;gap:8px;">
+              <select id="f-prevRecord" style="flex:1;min-width:0;"><option value="">저장된 기록이 없어요</option></select>
+              <button type="button" class="btn-edit" onclick="loadFromRecord()">불러오기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QA 평가표 -->
+      <div class="card">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="card-head-title">📊 QA 평가</span>
+          <label class="guide-toggle"><input type="checkbox" id="qaGuideToggle" checked onchange="toggleQaGuide(this.checked)"/> 채점 기준 보기</label>
+        </div>
+        <div class="auto-result hidden" id="autoResult" style="margin:12px 14px 0;"></div>
+        <div class="qa-total-bar">
+          <div class="qa-total-track"><div class="qa-total-fill" id="qaTotalFill" style="width:100%;"></div></div>
+          <span class="qa-total-badge" id="qaTotalBadge">100 / 100</span>
+        </div>
+        <div id="qaBody"></div>
+      </div>
+
+      <!-- 코칭 결과 -->
+      <div class="card">
+        <div class="card-head"><span class="card-head-title">📈 코칭 결과</span></div>
+        <div class="card-body">
+          <div style="display:grid;gap:14px;">
+            <div class="field">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><label>코칭 내용</label><button type="button" class="mini-btn" onclick="regenCoaching()">🔄 현재 점수 기준으로 다시 작성</button></div>
+              <div id="coachEditor"></div></div>
+            <div class="field"><label>추후 피드백 예정</label>
+              <textarea class="text-area" id="f-feedback" oninput="autoGrow(this)" placeholder="추후 피드백 예정 내용"></textarea></div>
+            <div class="field"><label>비고</label>
+              <textarea class="text-area" id="f-note" oninput="autoGrow(this)" placeholder="기타 메모사항"></textarea></div>
+          </div>
+          <div class="action-bar">
+            <button class="btn-save" id="saveBtn" onclick="saveRecord()">
+              <span id="saveBtnText">💾 Google Sheets에 저장</span>
+            </button>
+            <button class="btn-reset" onclick="resetForm()">↺ 초기화</button>
+
+          </div>
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+
+</div><!-- /new-main -->
+
+<aside class="side-panel" id="sidePanel">
+  <div class="side-tabs">
+    <button class="side-tab active" id="stab-stt" onclick="switchSide('stt')">🎧 녹취록(STT)</button>
+    <button class="side-tab" id="stab-ref" onclick="switchSide('ref')">📎 QA 세부평가표</button>
+  </div>
+  <div class="side-body" id="side-stt">
+    <input type="file" id="sttFile" accept=".txt,.log,.json,text/plain" onchange="loadStt()" style="font-size:13px;width:100%;"/>
+    <div id="sttEmpty" class="stt-note" style="margin-top:12px;">STT 파일(.txt)을 올리면 이곳에 녹취록이 고정돼요. 점수를 입력하는 동안에도 계속 보여요.</div>
+    <div id="sttWrap" style="display:none;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;">
+        <button class="auto-btn" onclick="runAutoScore()">⚙️ 1차 평가 실행</button>
+        <span style="font-size:11px;color:var(--mt);line-height:1.5;flex:1;min-width:140px;">문구·패턴으로 잡히는 항목만 1차 채점하고, 점수와 코칭 내용 초안까지 채워줘요.</span>
+      </div>
+      <div class="stt-tools">
+        <select id="sttTarget" onchange="setCiteTarget(Number(this.value))"></select>
+        <input type="text" id="sttFilter" placeholder="녹취 내 검색" oninput="filterStt()"/>
+        <span id="sttCount" style="font-size:11px;color:var(--mt);"></span>
+      </div>
+      <div class="stt-viewer" id="sttViewer"></div>
+      <div class="stt-note">근거를 넣을 항목을 고른 뒤(점수·메모를 건드리면 자동 선택돼요) 해당 발화를 클릭하면 메모에 시간과 함께 들어가요.<br>※ 녹취 파일은 저장되지 않고, 클릭해서 넣은 발화만 메모로 저장돼요.</div>
+    </div>
+  </div>
+  <div class="side-body hidden" id="side-ref"><div id="refBody" style="flex:1;display:flex;flex-direction:column;"></div></div>
+</aside>
+</div><!-- /new-layout -->
+
+    </div><!-- /tab-new -->
+  </div><!-- /page -->
+    </div><!-- /app-main -->
+  </div><!-- /app-layout -->
+</div><!-- /appScreen -->
+
+<!-- 플로팅 임시저장 버튼 -->
+<div class="float-draft" id="floatDraft">
+  <button class="float-btn-list" id="floatListBtn" onclick="toggleDraftSidebar()">
+    <div class="float-dot"></div>
+    <span id="floatDraftCount">임시저장 0개</span>
+  </button>
+  <button class="float-btn-save" onclick="saveDraft()">💾 임시저장</button>
+</div>
+
+<script>
+const LOCK_PW = "cx2026!!";
+
+function checkLock() {
+  const val = document.getElementById("lockInput").value;
+  if (val === LOCK_PW) {
+    document.getElementById("lockScreen").style.display = "none";
+    sessionStorage.setItem("cx_auth", "ok");
+    initAfterAuth();
+  } else {
+    document.getElementById("lockErr").textContent = "암호가 올바르지 않아요.";
+    document.getElementById("lockInput").value = "";
+  }
+}
+
+function normalizeResult(v) {
+  if (!v) return "ok";
+  const s = String(v).toLowerCase().trim();
+  if (s === "ok" || s.includes("문제없음") || s.includes("적절")) return "ok";
+  if (s === "warn" || s.includes("보통")) return "warn";
+  if (s === "bad" || s.includes("개선필요")) return "bad";
+  return "ok";
+}
+
 const QA_ITEMS = [
-  {cat:"기본 응대 및 음성 품질", max:3, name:"표준 첫인사 준수"},
-  {cat:"기본 응대 및 음성 품질", max:4, name:"표준 끝인사 및 통화 종료 가이드"},
-  {cat:"기본 응대 및 음성 품질", max:4, name:"불필요한 추임새"},
-  {cat:"기본 응대 및 음성 품질", max:3, name:"음성 품질 및 발음 정돈"},
-  {cat:"기본 응대 및 음성 품질", max:3, name:"기분 및 감정이 실린 어조"},
-  {cat:"기본 응대 및 음성 품질", max:3, name:"경청 태도"},
-
-  {cat:"대기 및 통화 관리", max:3, name:"대기 양해 멘트 구사"},
-  {cat:"대기 및 통화 관리", max:4, name:"통화 중 공백 및 대기시간 관리"},
-  {cat:"대기 및 통화 관리", max:3, name:"대기 종료 후 감사 표현"},
-
-  {cat:"본인 및 정보 확인", max:5, name:"필수 본인/매장 정보 식별"},
-  {cat:"본인 및 정보 확인", max:5, name:"이전 상담 이력 확인"},
-
-  {cat:"상황 진단 및 공감", max:5, name:"고객 니즈 및 공감, 문의 핵심 파악"},
-  {cat:"상황 진단 및 공감", max:5, name:"동문서답 방지"},
-
-  {cat:"전문적 안내 및 지식", max:5, name:"정확한 지식 기반 안내"},
-  {cat:"전문적 안내 및 지식", max:5, name:"추측성 단정 위험"},
-  {cat:"전문적 안내 및 지식", max:5, name:"구조적/기술적 한계 사유 설명"},
-  {cat:"전문적 안내 및 지식", max:5, name:"방어적/법적 대립 발화 금지"},
-
-  {cat:"응대 태도 및 어법", max:5, name:"책임 전가 및 고객 비난 발화 금지"},
-  {cat:"응대 태도 및 어법", max:4, name:"불필요한 감정적 대립 금지"},
-  {cat:"응대 태도 및 어법", max:4, name:"책임감 있는 주도적 화법 구사"},
-  {cat:"응대 태도 및 어법", max:4, name:"핑계와 둘러대기식 해명 지양"},
-  {cat:"응대 태도 및 어법", max:3, name:"최초 통화자의 감정 케어 및 정중한 사과"},
-
-  {cat:"해결책 제시 및 사후 관리", max:4, name:"단계별 대안 및 협의안 제시"},
-  {cat:"해결책 제시 및 사후 관리", max:3, name:"담당 부서 및 외부기관 연계 안내"},
-  {cat:"해결책 제시 및 사후 관리", max:3, name:"상담 이력 기재"}
+  {"cat": "기본 응대 및 음성 품질", "max": 3, "name": "표준 첫인사 준수", "guide": "팀 공통 표준 첫인사 구사 여부 · \"감사합니다. 아이샵케어입니다.\"", "deduct": "첫인사 누락 또는 표준 멘트 미준수 시", "good": "표준 첫인사를 정확하게 구사했어요.", "coach": "통화 시작 첫 문장에서 인사와 회사명을 정해진 표현 그대로 말하면 고객이 안정감을 느껴요.", "scripts": ["\"감사합니다. 아이샵케어입니다.\"", "(콜백일 때) \"안녕하세요, 대표님. 아이샵케어 ○○○입니다. 앞서 문의 주신 건으로 연락드렸습니다. 지금 통화 괜찮으실까요?\"", "(인입 후 고객 인사에) \"네, 대표님. 말씀해 주세요.\""]},
+  {"cat": "기본 응대 및 음성 품질", "max": 4, "name": "표준 끝인사 및 통화 종료 가이드", "guide": "추가 문의 확인 \"네, 대표님. 추가 문의사항 없으실까요?\" 및 정중한 끝인사 준수 · 고객 미종료 시 \"대표님, 먼저 종료하도록 하겠습니다.\" 구사", "deduct": "끝인사 누락, 고객 말 끝나기 전 먼저 종료, 고객이 선 통화 미종료 시 통화 종료 멘트 누락", "good": "추가 문의 확인과 끝인사로 통화를 정중하게 마무리했어요.", "coach": "안내가 끝나도 바로 끊지 말고, 추가 문의를 한 번 확인한 뒤 끝인사까지 해야 통화가 정리돼요. 고객이 끊지 않을 때는 먼저 종료한다고 안내해요.", "scripts": ["\"네, 대표님. 추가 문의사항 없으실까요?\" → \"감사합니다. 좋은 하루 보내세요.\"", "\"안내드린 내용 중 더 궁금하신 부분은 없으실까요? 없으시면 이것으로 마무리하겠습니다. 감사합니다.\"", "(고객이 끊지 않을 때) \"대표님, 먼저 종료하도록 하겠습니다. 감사합니다.\""]},
+  {"cat": "기본 응대 및 음성 품질", "max": 4, "name": "불필요한 추임새", "guide": "\"아...\", \"음...\", \"어...\", \"요고\", \"저요\" 등 불필요한 언어적 습관(강투어) 사용", "deduct": "단순 1~2회 발생은 미감점하며, 통화 내내 지속적으로 발생하는 경우에만 감점", "good": "불필요한 추임새 없이 깔끔하게 안내했어요.", "coach": "말이 막힐 때 \"어\", \"그\"로 채우기보다 잠깐 멈추고 다음 문장을 정리해서 말하면 전달력이 좋아져요. 안내할 내용을 두세 문장으로 미리 정리해 두는 연습이 도움이 돼요.", "scripts": ["(추임새 대신) \"확인해 보니, 현재 상황은 이렇습니다.\"처럼 결론 문장으로 시작해요.", "(말이 막힐 때) \"잠시 정리해서 말씀드리겠습니다.\"", "\"핵심만 말씀드리면, 첫째 ~, 둘째 ~입니다.\""]},
+  {"cat": "기본 응대 및 음성 품질", "max": 3, "name": "음성 품질 및 발음 정돈", "guide": "고객이 듣기 편한 속도와 명확한 발음으로 단정하게 안내했는지", "deduct": "지나치게 빠른 어조, 웅얼거림, 발음 불분명으로 전달력 저하 시", "good": "듣기 편한 속도와 또렷한 발음으로 안내했어요.", "coach": "핵심 안내(금액, 일정, 절차)는 한 템포 늦추고 또박또박 말해 주세요. 문장을 짧게 끊으면 발음도 선명해져요.", "scripts": ["\"중요한 내용이라 다시 한번 천천히 안내드리겠습니다.\"", "\"방금 말씀이 빨랐던 것 같아 다시 정리해서 말씀드리겠습니다.\"", "\"금액과 일정은 한 번 더 또박또박 확인드리겠습니다.\""]},
+  {"cat": "기본 응대 및 음성 품질", "max": 3, "name": "기분 및 감정이 실린 어조", "guide": "개인의 기분, 짜증, 귀찮음, 억울함 등의 감정이 목소리 톤으로 드러나지 않는지", "deduct": "통화 내내 지속적으로 짜증/훈계조/비꼬는 톤이 발생하는 경우에만 감점", "good": "감정이 드러나지 않는 차분하고 일정한 톤을 유지했어요.", "coach": "고객이 격앙될수록 목소리 톤을 한 단계 낮추고 속도를 늦춰 주세요. 반문하는 말투(\"~냐고요\", \"~니까요\")는 같은 내용도 따지는 느낌을 줘요.", "scripts": ["\"말씀하신 부분 충분히 이해했습니다. 제가 확인해서 바로 안내드리겠습니다.\"", "\"불편하셨던 점 잘 알겠습니다. 차분히 하나씩 확인해 보겠습니다.\"", "\"답답하신 마음 이해합니다. 지금 가능한 방법부터 말씀드리겠습니다.\""]},
+  {"cat": "기본 응대 및 음성 품질", "max": 3, "name": "경청 태도", "guide": "고객의 말을 도중에 끊거나 끼어들지 않고 끝까지 정중히 경청하는지", "deduct": "고객 말끊기 또는 끼어들기 1회 이상 발생 시", "good": "고객 말을 끊지 않고 끝까지 경청했어요.", "coach": "고객 말이 끝나고 1~2초 쉰 뒤에 답하면 끼어들기로 느껴지지 않아요. 반박하고 싶은 순간에도 먼저 고객 말을 요약해서 되짚어 주세요.", "scripts": ["\"네, 말씀 끝까지 잘 들었습니다. 정리해 보면 ~라는 말씀이시죠?\"", "(고객 말이 끝나고 1~2초 쉰 뒤) \"말씀 감사합니다. 제가 이해한 내용이 맞는지 확인드리겠습니다.\"", "\"더 말씀하실 내용 있으시면 편하게 말씀해 주세요. 끝까지 듣겠습니다.\""]},
+  {"cat": "대기 및 통화 관리", "max": 3, "name": "대기 양해 멘트 구사", "guide": "전산 조회, 이력 확인, 타 부서 확인 시 사전 양해 멘트 구사 · \"확인 후 안내해 드리겠습니다. 잠시만 기다려 주세요.\"", "deduct": "사전 안내 멘트 없는 경우", "good": "확인이 필요할 때 사전에 양해를 구했어요.", "coach": "조회나 확인을 시작하기 전에 먼저 알리고, 대기 시간이 길어질 것 같으면 예상 시간을 함께 안내해 주세요.", "scripts": ["\"확인 후 안내해 드리겠습니다. 잠시만 기다려 주세요.\"", "\"정확한 안내를 위해 전산 조회를 하겠습니다. 1~2분 정도 소요될 수 있습니다.\"", "\"담당 부서에 확인이 필요합니다. 잠시만 기다려 주시겠어요?\""]},
+  {"cat": "대기 및 통화 관리", "max": 4, "name": "통화 중 공백 및 대기시간 관리", "guide": "사전 양해 없는 묵음 및 1분 이상 대기 시 OB(재통화) 전환 · \"대표님, 확인 후 다시 연락드리도록 하겠습니다.\" 구사", "deduct": "사전 양해 없이 5초 이상 묵음 방치 / 1분 이상 긴 대기를 무작정 유지하며 고객을 기다리게 한 경우", "good": "공백 없이 대기 시간을 잘 관리했어요.", "coach": "조용한 시간이 5초를 넘기면 중간 안내를 하고, 1분 이상 걸릴 것 같으면 재통화로 전환해요.", "scripts": ["\"조금 더 시간이 걸릴 것 같습니다. 대표님, 확인 후 다시 연락드리도록 하겠습니다.\"", "\"확인에 시간이 걸리고 있습니다. 조금만 더 기다려 주시겠어요?\"", "\"확인되는 대로 ○시까지 먼저 연락드리겠습니다. 괜찮으실까요?\""]},
+  {"cat": "대기 및 통화 관리", "max": 3, "name": "대기 종료 후 감사 표현", "guide": "대기 복귀 후 기다려준 고객에게 감사 인사를 전했는지 · \"대표님, 기다려 주셔서 감사합니다.\"", "deduct": "대기 복귀 후 감사 인사 생략 시", "good": "대기 후 복귀하며 감사 인사를 전했어요.", "coach": "복귀하는 첫 마디를 감사 인사로 시작하는 습관을 들여 주세요.", "scripts": ["\"대표님, 기다려 주셔서 감사합니다.\"", "\"오래 기다리셨죠. 기다려 주셔서 감사합니다. 확인 결과 말씀드리겠습니다.\"", "\"기다려 주셔서 감사합니다. 확인된 내용부터 안내드리겠습니다.\""]},
+  {"cat": "본인 및 정보 확인", "max": 5, "name": "필수 본인/매장 정보 식별", "guide": "정확한 조회를 위해 상호명 또는 사업자 번호 등 필수 식별 정보를 정석대로 확인했는지 평가", "deduct": "기본 정보 확인 없이 조회를 시작하거나 필수 정보 수취 누락 시", "good": "조회 전에 필수 식별 정보를 정확하게 확인했어요.", "coach": "조회를 시작하기 전에 상호명이나 사업자번호를 먼저 확인해야 다른 매장 정보를 안내하는 사고를 막을 수 있어요.", "scripts": ["\"대표님, 정확한 확인을 위해 상호명이나 사업자번호 말씀해 주시겠어요?\"", "\"통화 중이신 분이 대표님 본인이 맞으실까요? 성함과 상호명 확인 부탁드립니다.\"", "(대리 통화자일 때) \"대표님과는 어떤 관계로 연락 주셨는지 여쭤봐도 될까요? 대표자 성함도 함께 확인 부탁드립니다.\""]},
+  {"cat": "본인 및 정보 확인", "max": 5, "name": "이전 상담 이력 확인", "guide": "문의 응대 전 직전 상담 이력 및 전산 정보(단말기, 계약 조건 등)를 먼저 확인한 후 통화를 진행했는지 평가", "deduct": "이력 조회를 하지 않고 \"어떤 내용으로 통화하셨을까요?\" 라며 고객에게 이전 상담 내용 재설명을 유도", "good": "이전 상담 이력을 파악하고 통화를 시작했어요.", "coach": "통화 전에 직전 상담 이력을 먼저 보고, 고객에게는 이미 아는 내용을 다시 묻지 않도록 해요.", "scripts": ["\"이전 상담 내용 확인했습니다. 앞서 문의주신 ~건으로 연락드린 것으로 확인됩니다.\"", "\"상담 이력 확인해 보니 ~까지 진행되었습니다. 이어서 안내드리겠습니다.\"", "\"앞서 요청하신 ~ 내용은 확인했습니다. 추가로 말씀하실 부분만 알려주세요.\""]},
+  {"cat": "상황 진단 및 공감", "max": 5, "name": "고객 니즈 및 공감, 문의 핵심 파악", "guide": "고객의 불편/억울함의 핵심과 요구사항(니즈)을 정확히 헤아리고 공감했는지 평가", "deduct": "고객의 니즈를 제대로 파악하지 못하거나 공감 부족", "good": "고객의 요구를 정확히 파악하고 공감했어요.", "coach": "고객이 감정을 드러낼 때는 해결책보다 먼저 공감 표현을 하고, 요구사항을 내 말로 한 번 요약해서 맞는지 확인해요.", "scripts": ["\"계속 연락이 어긋나서 많이 답답하셨겠어요. 정리해 보면, ~를 원하시는 거죠?\"", "\"여러 번 연락하셨는데 해결이 안 돼 불편하셨겠어요. 요청하신 내용 다시 확인하겠습니다.\"", "\"핵심은 ~이시군요. 제가 맞게 이해했는지 확인드리겠습니다.\""]},
+  {"cat": "상황 진단 및 공감", "max": 5, "name": "동문서답 방지", "guide": "고객이 질의한 핵심 내용을 정확히 이해하고 관련 내용으로 답변했는지 평가", "deduct": "질문과 상관없는 내용으로 겉도는 답변 반복 시", "good": "질문의 핵심에 맞춰 답변했어요.", "coach": "고객이 같은 요청을 두 번 이상 하면 내 답변이 어긋나고 있다는 신호예요. 설명을 멈추고 요청을 다시 확인한 뒤 그 요청에 먼저 답해요.", "scripts": ["\"제가 말씀을 잘못 이해했을 수 있어요. 지금 원하시는 건 ~이 맞으실까요?\"", "\"질문하신 내용에 먼저 답드리겠습니다. ~는 가능합니다 / 어렵습니다.\"", "\"같은 말씀을 여러 번 하시게 해서 죄송합니다. 핵심만 다시 확인하겠습니다.\""]},
+  {"cat": "전문적 안내 및 지식", "max": 5, "name": "정확한 지식 기반 안내", "guide": "업무 매뉴얼, 기능, 프로세스 절차, 정책 등을 정확히 안내했는지 평가", "deduct": "업무 지식 미숙지로 인한 사실과 다른 오안내 발생 시", "good": "업무 기준에 맞게 정확히 안내했어요.", "coach": "같은 통화 안에서 안내가 바뀌면 고객이 혼란스러워해요. 확신이 서지 않으면 안내 전에 매뉴얼이나 담당자를 확인하고 말해요.", "scripts": ["\"정확한 안내를 위해 확인 후 말씀드리겠습니다. 잠시만 기다려 주세요.\"", "\"방금 안내드린 내용에 수정이 필요합니다. 정확한 내용은 ~입니다.\"", "\"확인 결과 ~입니다. 기준은 ~에 따라 ~입니다.\""]},
+  {"cat": "전문적 안내 및 지식", "max": 5, "name": "추측성 단정 워딩", "guide": "확인되지 않은 사실을 확신 없이 불명확하게 안내하지 않는지 평가", "deduct": "\"~인 것 같아요\", \"~일 거고요\" 등 추측성 짐작 답변 구사 시", "good": "확인된 사실 위주로 명확하게 안내했어요.", "coach": "확인한 내용은 단정형으로, 확인하지 못한 내용은 \"확인 후 안내\"로 구분해서 말해요.", "scripts": ["\"확인 결과 ~입니다.\"", "\"그 부분은 지금 확인되지 않아, 확인 후 안내드리겠습니다.\"", "\"정확한 내용은 담당 부서 확인 후 ○시까지 말씀드리겠습니다.\""]},
+  {"cat": "전문적 안내 및 지식", "max": 5, "name": "구조적/기술적 한계 사유 설명", "guide": "시스템상 처리가 불가능한 건에 대해 단말기 스펙/VAN사 등 구조적 사유를 설명했는지", "deduct": "사유 설명 없이 \"우린 안 돼요\" 식의 단순 일축 응대", "good": "처리가 어려운 이유를 구조적 사유로 설명했어요.", "coach": "안 되는 일은 \"안 된다\"로 끝내지 말고, 왜 안 되는지(시스템/절차/기기 사양)를 한 문장으로 설명해요.", "scripts": ["\"현재 기기 구성상 ~이 어려운 구조입니다. 대신 ~로 도와드릴 수 있습니다.\"", "\"시스템상 ~ 때문에 바로 처리가 어렵습니다. 가능한 방법은 ~입니다.\"", "\"~ 단계에서는 ~이 어려운 점 양해 부탁드립니다. 대신 ~를 요청해 두겠습니다.\""]},
+  {"cat": "전문적 안내 및 지식", "max": 5, "name": "방어적/법적 대립 발화 금지", "guide": "불편선행 인정보다 법적/원칙적 방어로 고객과 대립하지 않는지 평가", "deduct": "\"계약서에 명시되어 있다\", \"법적으로 문제없다\", \"의무적으로 고지할 의무 없다\" 구사 시", "good": "법적·원칙적 방어 없이 고객 입장에서 응대했어요.", "coach": "규정을 근거로 앞세우기보다 먼저 불편을 인정하고, 규정은 안내 차원에서 부드럽게 설명해요.", "scripts": ["\"불편을 드려 죄송합니다. 해당 내용은 계약 시 안내드린 부분인데, 이해하시기 쉽게 다시 설명드리겠습니다.\"", "\"충분히 헷갈리실 수 있는 부분입니다. 제가 다시 차근차근 설명드리겠습니다.\"", "\"말씀하신 불편 먼저 확인하겠습니다. 그 뒤에 가능한 방법을 함께 찾아보겠습니다.\""]},
+  {"cat": "응대 태도 및 어법", "max": 5, "name": "책임 전가 및 고객 비난 발화 금지", "guide": "고객의 착오나 분노 상황에서 책임이나 과실을 고객에게 돌리지 않는지 평가", "deduct": "\"기억하셨어야죠\", \"직접 서명해 주신 거잖아요\" 등 구사 시 즉시 0점 처리", "good": "고객에게 책임을 돌리는 표현 없이 응대했어요.", "coach": "원인이 어디에 있든 \"누가 잘못했는지\"를 짚는 말은 피하고, 지금 할 수 있는 일을 중심으로 말해요.", "scripts": ["\"혼선이 생겨 불편하셨죠. 지금 상황에서 가능한 방법을 안내드리겠습니다.\"", "\"저희 쪽에서도 더 명확히 안내드렸어야 했는데 죄송합니다. 다시 확인해 드리겠습니다.\"", "\"상황을 정리해서 말씀드리겠습니다. 지금 필요한 조치는 ~입니다.\""]},
+  {"cat": "응대 태도 및 어법", "max": 4, "name": "불필요한 감정적 대립 금지", "guide": "고객과 옳고 그름을 다투거나 감정 싸움으로 번지지 않는지 평가", "deduct": "\"저랑 감정 싸움할 필요 없고요\", \"~라니까요\" 등 도발적 발화 시 즉시 0점 처리", "good": "감정적 대립 없이 차분하게 응대했어요.", "coach": "고객이 격앙되면 반박하고 싶어지지만, \"~냐고요\", \"~라니까요\" 같은 반문은 바로 대립으로 이어져요. 질문 대신 상황을 정리하는 말로 바꿔요.", "scripts": ["\"말씀하신 내용 이해했습니다. ~부터 먼저 확인해서 안내드리겠습니다.\"", "\"충분히 이해합니다. 요청하신 내용을 다시 한번 정리해 보겠습니다.\"", "\"답답하신 부분 알겠습니다. 제가 끝까지 확인해서 안내드리겠습니다.\""]},
+  {"cat": "응대 태도 및 어법", "max": 4, "name": "책임감 있는 주도적 화법 구사", "guide": "내부 확인 내용 전달 시 제3자 전달어를 피하고 본인이 주체가 되어 안내했는지 평가", "deduct": "담당에서 안 된다고 \"하네요\", \"하더라고요\" 구사 시 [권장] \"확인 결과, 현재는 지원이 어려운 상황입니다\"", "good": "본인이 주체가 되어 확신 있게 안내했어요.", "coach": "\"~하네요/~하더라고요/~대요\" 대신 \"확인 결과 ~입니다\"로 말하고, 마무리에는 누가·언제까지 무엇을 하는지 구체적으로 말해요.", "scripts": ["\"확인 결과, 현재는 지원이 어려운 상황입니다.\"", "\"제가 오늘 중으로 확인해서 ○시까지 연락드리겠습니다.\"", "\"담당 부서와 제가 직접 조율해서 결과를 안내드리겠습니다.\""]},
+  {"cat": "응대 태도 및 어법", "max": 4, "name": "핑계 및 둘러대기식 해명 지양", "guide": "자사 오류/오발송 발생 시 변명하지 않고 즉시 인정하고 정중히 사과했는지 평가", "deduct": "\"거짓말한 게 아니라 발송 부서가 따로 있어서...\" 구사 시", "good": "변명 없이 인정하고 안내했어요.", "coach": "자사 쪽 실수는 이유를 설명하기 전에 먼저 인정하고 사과해요.", "scripts": ["\"저희 쪽에서 잘못 안내드렸습니다. 불편을 드려 죄송합니다.\"", "\"저희가 먼저 확인했어야 했는데 놓쳤습니다. 바로 바로잡겠습니다.\"", "\"혼선을 드린 점 인정하고 사과드립니다. 정정된 내용으로 다시 안내드리겠습니다.\""]},
+  {"cat": "응대 태도 및 어법", "max": 3, "name": "최초 통화자의 감정 케어 및 정중한 사과", "guide": "표현이나 안내 착오로 고객의 감정이 상한 경우, 본인이 정중히 사과하여 감정을 가라앉혔는지", "deduct": "자사 귀책이나 표현상의 문제에도 사과 없이 버티는 경우", "good": "고객 감정을 살피고 정중하게 사과했어요.", "coach": "고객이 화를 내는 이유가 우리 쪽 혼선이라면, 사과를 먼저 하고 그다음 해결책을 말해요. 사과는 한 번만 해도 진정 효과가 있어요.", "scripts": ["\"담당자가 계속 바뀌어서 많이 불편하셨죠. 정말 죄송합니다. 제가 끝까지 챙기겠습니다.\"", "\"여러 번 연락하시게 해서 죄송합니다. 이번에는 제가 책임지고 확인드리겠습니다.\"", "\"불편을 드려 진심으로 죄송합니다. 지금부터 제가 도와드리겠습니다.\""]},
+  {"cat": "해결책 제시 및 사후 관리", "max": 4, "name": "단계별 대안 및 협의안 제시", "guide": "당사 처리 불가/해지 요청 시 단답형 거절이 아닌, 가능한 협의안을 제안했는지", "deduct": "대안 제시 없이 단답형 거절 또는 무조건적인 해지 처리 진행 시", "good": "거절로 끝내지 않고 가능한 대안을 제안했어요.", "coach": "안 되는 것을 말한 뒤에는 반드시 가능한 방법 한두 가지를 함께 제안하고, 다음 단계(누가, 언제)까지 안내해요.", "scripts": ["\"그 방법은 어렵지만, 대신 ~는 가능합니다. 내일 오전 중으로 제가 직접 연락드리겠습니다.\"", "\"두 가지 방법이 있습니다. 첫째 ~, 둘째 ~입니다. 어느 쪽이 편하실까요?\"", "\"바로 해결이 어려워 담당 부서에 요청해 두겠습니다. ○시까지 결과를 안내드리겠습니다.\""]},
+  {"cat": "해결책 제시 및 사후 관리", "max": 3, "name": "담당 부서 및 외부 기관(카드사/VAN사) 연결 안내", "guide": "타사/타 부서 이관 건에 대해 정확한 문의 경로 및 연락처를 안내하는가?", "deduct": "알아서 알아보라는 식으로 무성의하게 넘기는 경우", "good": "정확한 문의 경로와 연락처를 안내했어요.", "coach": "다른 곳으로 안내할 때는 부서명, 연락처, 문의할 내용까지 정리해서 알려요.", "scripts": ["\"해당 건은 ○○카드사 고객센터(전화번호)에서 확인 가능합니다. 문의하실 때 ~라고 말씀하시면 됩니다.\"", "\"VAN사 담당 부서 연락처는 ○○○-○○○○입니다. 문의 시 사업자번호를 알려주시면 빠릅니다.\"", "\"연락처를 문자로 보내드릴까요? 전달드린 번호로 ~ 문의해 주시면 됩니다.\""]},
+  {"cat": "해결책 제시 및 사후 관리", "max": 3, "name": "상담 이력 기재", "guide": "상담한 내용에 대해서 빠짐없이 기록했는지 평가", "deduct": "상담 이력 미기재 또는 주요 사실 누락 시", "good": "상담 내용을 빠짐없이 기록했어요.", "coach": "통화 직후 고객 요청, 안내 내용, 후속 조치(누가·언제)를 이력에 남겨요.", "scripts": ["(이력 예시) \"고객 요청: ~ / 안내: ~ / 후속: ○○ 담당이 ○일까지 연락\"", "(이력 예시) \"요청 사항 ~, 안내 내용 ~, 고객 반응 ~, 후속 조치 ~(담당·기한)\"", "(이력 예시) \"미해결 사항: ~ / 다음 단계: ~ / 고객 요청 시간: ~\""]}
 ];
+const QA_MAX_TOTAL = QA_ITEMS.reduce((s, it) => s + it.max, 0);
 
-/* ─────────────── 시트 기본 ─────────────── */
-
-function getSheet(ss) {
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) { sheet = ss.insertSheet(SHEET_NAME); setupSheet(sheet); }
-  if (sheet.getLastRow() === 0) { setupSheet(sheet); }
-  return sheet;
+function qaScoreClass(score, max) {
+  if (score >= max) return "full";
+  if (score <= 0) return "zero";
+  return "partial";
 }
 
-// 날짜 정규화 — 시트가 날짜를 Date 객체로 자동 변환해도 "YYYY-MM-DD" 로 비교
-function normDate(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, "Asia/Seoul", "yyyy-MM-dd");
-  const m = String(v).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
-  if (m) return m[1] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[3]).slice(-2);
-  return String(v).trim();
+function qaGrade(total) {
+  if (total >= 90) return { label: "최우수", color: "#065F46", bg: "#ECFDF5" };
+  if (total >= 70) return { label: "우수",   color: "#1D4ED8", bg: "#EFF6FF" };
+  if (total >= 60) return { label: "보통",   color: "#92400E", bg: "#FFFBEB" };
+  return                  { label: "미흡",   color: "#991B1B", bg: "#FEF2F2" };
 }
 
-// 이름(A열=0) + 날짜(C열=2) 기준으로 마지막 매칭 행 반환 (1-based, 헤더 포함)
-function findRow(allData, member, date) {
-  let found = -1;
-  const nd = normDate(date);
-  for (let i = 0; i < allData.length; i++) {
-    if (String(allData[i][0]).trim() === String(member).trim() &&
-        normDate(allData[i][2]) === nd) {
-      found = i + 2;
-    }
+let currentMember = null;
+let allMembers    = [];
+let historyRowsCache = [];
+
+/* ── 초기화 ── */
+async function initAfterAuth() {
+  buildQaBody();
+  setToday();
+  await loadMembers();
+  showSelect();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (sessionStorage.getItem("cx_auth") === "ok") {
+    document.getElementById("lockScreen").style.display = "none";
+    initAfterAuth();
+  } else {
+    document.getElementById("loadingScreen").classList.add("hidden");
+    document.getElementById("lockScreen").style.display = "flex";
   }
-  return found;
-}
+});
 
-function buildRow(d, now) {
-  const qa = d.qa || [];
-  const row = [
-    d.member  || "",
-    d.squad   || "",
-    d.date    || "",
-    d.monitor || ""
-  ];
-  let total = 0;
-  QA_ITEMS.forEach((item, i) => {
-    const score = Number(qa[i] && qa[i].score);
-    const s = isNaN(score) ? 0 : score;
-    total += s;
-    row.push(s, (qa[i] && qa[i].memo) || "");
-  });
-  row.push(total);
-  row.push(d.coaching || "", d.feedback || "", d.note || "");
-  row.push(now);
-  return row;
-}
-
-function doPost(e) {
-  const out = ContentService.createTextOutput().setMimeType(ContentService.MimeType.JSON);
+/* ── 팀원 목록 로드 (Google Sheets) ── */
+async function loadMembers() {
   try {
-    const d = JSON.parse(e.postData.contents);
-
-    const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = getSheet(ss);
-    const now   = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-    const lastRow = sheet.getLastRow();
-    const colCount = sheet.getLastColumn();
-    const allData = lastRow > 1
-      ? sheet.getRange(2, 1, lastRow - 1, colCount).getValues()
-      : [];
-
-    // ── 삭제 ──
-    if (d.action === "delete") {
-      const targetRow = findRow(allData, d.member, d.date);
-      if (targetRow > 0) {
-        try {
-          sheet.deleteRow(targetRow);
-        } catch (delErr) {
-          // 데이터 행이 1개뿐이면 고정된 헤더 때문에 삭제가 막혀요 → 고정을 풀고 삭제 후 다시 고정
-          try {
-            const fr = sheet.getFrozenRows();
-            sheet.setFrozenRows(0);
-            sheet.deleteRow(targetRow);
-            sheet.setFrozenRows(fr);
-          } catch (e2) {
-            sheet.getRange(targetRow, 1, 1, sheet.getLastColumn()).clearContent();
-          }
-        }
-        out.setContent(JSON.stringify({ status: "ok", mode: "deleted" }));
-      } else {
-        out.setContent(JSON.stringify({ status: "error", message: "삭제할 행을 찾지 못했어요." }));
-      }
-      return out;
-    }
-
-    const row = buildRow(d, now);
-
-    // ── 수정 또는 신규 — 이름+날짜 기준 덮어쓰기 ──
-    const targetRow = findRow(allData, d.member, d.date);
-
-    if (targetRow > 0) {
-      sheet.getRange(targetRow, 3).setNumberFormat("@");
-      sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
-      formatDataRow(sheet, targetRow, d.qa || []);
-      out.setContent(JSON.stringify({ status: "ok", mode: "overwritten" }));
-    } else {
-      const newRow = sheet.getLastRow() + 1;
-      sheet.getRange(newRow, 3).setNumberFormat("@");
-      sheet.appendRow(row);
-      formatDataRow(sheet, newRow, d.qa || []);
-      out.setContent(JSON.stringify({ status: "ok", mode: "created" }));
-    }
-
-  } catch(err) {
-    out.setContent(JSON.stringify({ status: "error", message: err.message }));
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/팀원목록!A2:C100?key=${API_KEY}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    allMembers = (data.values || [])
+      .map(r => ({ name:(r[0]||"").trim(), squad:(r[1]||"").trim() }))
+      .filter(m => m.name);
+  } catch(e) {
+    allMembers = [];
   }
+}
+
+/* ── 팀원 선택 화면 렌더 ── */
+function showSelect() {
+  document.getElementById("loadingScreen").classList.add("hidden");
+  document.getElementById("selectScreen").classList.remove("hidden");
+
+  const wrap = document.getElementById("squadWrap");
+
+  if (!allMembers.length) {
+    wrap.innerHTML = `<div class="sel-err">⚠️ 팀원 목록을 불러올 수 없어요.<br><small style="opacity:.8;">SHEET_ID · API_KEY 설정을 확인해주세요.</small></div>`;
+    return;
+  }
+
+  /* 스쿼드별 그룹핑 — Sheets 순서 유지 */
+  const squads = [...new Set(allMembers.map(m => m.squad))];
+  wrap.innerHTML = squads.map(sq => {
+    const members = allMembers.filter(m => m.squad === sq);
+    return `
+      <div class="squad-section">
+        <div class="squad-header">
+          <span class="squad-label">${sq}</span>
+          <div class="squad-line"></div>
+          <span class="squad-count">${members.length}명</span>
+        </div>
+        <div class="member-grid">
+          ${members.map(m => `
+            <button class="member-btn" onclick="enterMember(allMembers.find(m=>m.name==='${m.name}'))">
+              <span>${m.name}</span>
+            </button>`).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+/* ── 팀원 선택 화면으로 돌아가기 ── */
+function goSelect() {
+  document.getElementById("appScreen").style.display = "none";
+  document.getElementById("selectScreen").classList.remove("hidden");
+}
+
+/* ── 팀원 앱 진입 ── */
+function showMemberScreen(member) {
+  const changed = !currentMember || currentMember.name !== member.name;
+  currentMember = member;
+  document.getElementById("selectScreen").classList.add("hidden");
+  document.getElementById("appScreen").style.display = "block";
+  document.getElementById("heroName").textContent  = member.name;
+  document.getElementById("heroSquad").textContent = member.squad;
+  if (changed) resetForm();            // 다른 팀원 작성 내용이 섞이지 않게 초기화
+  const fd = document.getElementById("floatDraft");
+  if (fd) fd.classList.add("visible");
+}
+
+async function enterMember(member) {
+  showMemberScreen(member);
+  await loadHistory();
+  checkDraft();
+}
+
+/* ── 코칭 기록 로드 ── */
+async function loadHistory() {
+  const list = document.getElementById("historyList");
+  list.innerHTML = `<div class="history-empty">기록 불러오는 중...</div>`;
+
+  try {
+    const url  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/코칭기록!A2:BG1000?key=${API_KEY}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const rows = (data.values || []).filter(r => (r[0]||"").trim() === currentMember.name);
+
+    document.getElementById("statCount").textContent = rows.length;
+
+    if (!rows.length) {
+      list.innerHTML = `<div class="history-empty">아직 코칭 기록이 없어요 😊<br><small style="color:#94a3b8;">새 코칭 입력 탭에서 첫 코칭을 등록해보세요.</small></div>`;
+      return;
+    }
+
+    rows.sort((a, b) => (b[2] || "").localeCompare(a[2] || ""));
+    historyRowsCache = rows;
+    fillPrevRecordSelect();
+
+    list.innerHTML = rows.map((r, idx) => {
+      const qaVals = QA_ITEMS.map((item, i) => {
+        const raw = Number(r[4 + i * 2]);
+        const score = isNaN(raw) ? item.max : raw;
+        return { ...item, score, memo: r[5 + i * 2] || "" };
+      });
+      const totalScore = Number(r[4 + QA_ITEMS.length * 2]);
+      const totalDisp = isNaN(totalScore) ? qaVals.reduce((s,x)=>s+x.score,0) : totalScore;
+      const grade = qaGrade(totalDisp);
+      const deducted = qaVals.filter(x => x.score < x.max);
+      const badges = `<span class="badge b-ok">총점 ${totalDisp} / ${QA_MAX_TOTAL}</span>` +
+        `<span class="badge" style="background:${grade.bg};color:${grade.color};">${grade.label}</span>` +
+        (deducted.length === 0
+          ? ""
+          : deducted.slice(0, 3).map(x =>
+              `<span class="badge ${x.score === 0 ? "b-bad" : "b-warn"}">${x.name}: ${x.score}/${x.max}</span>`
+            ).join(""));
+
+      // 상세 — QA 항목 행 (카테고리별 그룹)
+      let lastCat = null;
+      const qaRows = qaVals.map(x => {
+        let head = "";
+        if (x.cat !== lastCat) {
+          head = `<tr><td colspan="2" style="font-weight:700;background:#FAFBFC;padding-top:10px;">${x.cat}</td></tr>`;
+          lastCat = x.cat;
+        }
+        const cls = x.score >= x.max ? "dr-ok" : x.score === 0 ? "dr-bad" : "dr-warn";
+        return `${head}<tr><td class="dt-item">${x.name}</td><td><span class="detail-result ${cls}">${x.score} / ${x.max}</span>${x.memo ? `<div style="margin-top:4px;">${memoViewHtml(x.memo, "app")}</div>` : ""}</td></tr>`;
+      }).join("");
+
+      const coaching  = r[4 + QA_ITEMS.length * 2 + 1] || "";
+      const feedback  = r[4 + QA_ITEMS.length * 2 + 2] || "";
+      const note      = r[4 + QA_ITEMS.length * 2 + 3] || "";
+
+      const ukey = r[4 + QA_ITEMS.length * 2 + 4] || r[2] + '_' + idx;
+      return `
+        <div class="hist-item-wrap" data-date="${r[2] || ''}" data-key="${ukey}">
+        <div class="hist-item">
+          <div class="hist-header" onclick="toggleHist(${idx})">
+            <div class="hist-left">
+              <span class="hist-date">📅 평가 작성일: ${r[2] || "-"}</span>
+              <div class="hist-badges">${badges}</div>
+            </div>
+            <span class="hist-chevron" id="chev-${idx}">▾</span>
+          </div>
+          <div class="hist-detail" id="hdet-${idx}">
+            <div class="hist-action-bar">
+              <button class="btn-delete" onclick="deleteRecord(${idx}, event)">🗑 삭제</button>
+              <button class="btn-edit" onclick="openEditMode(${idx}, event)">✏️ 수정</button>
+              <button class="btn-edit" onclick="downloadPdf(${idx}, event)">📄 PDF 저장</button>
+            </div>
+            <div class="detail-view" id="dview-${idx}" style="padding:0 16px 16px;">
+              <div class="detail-section">
+                <div class="detail-label">QA 평가 (총점 ${totalDisp} / ${QA_MAX_TOTAL} · ${grade.label})</div>
+                <table class="detail-table">
+                  ${qaRows}
+                </table>
+              </div>
+              ${coaching ? `<div class="detail-section"><div class="detail-label">코칭 결과</div>${coachingHtml(coaching, "app")}</div>` : ""}
+              ${feedback ? `<div class="detail-section"><div class="detail-label">추후 피드백 예정</div><div class="detail-text" style="white-space:pre-wrap;">${esc(feedback)}</div></div>` : ""}
+              ${note ? `<div class="detail-section"><div class="detail-label">비고</div><div class="detail-text" style="white-space:pre-wrap;">${esc(note)}</div></div>` : ""}
+            </div>
+            <div class="edit-mode" id="emode-${idx}">
+              <div class="edit-header">
+                <span class="edit-header-title">✏️ 코칭 기록 수정</span>
+                <div class="edit-btns">
+                  <button class="btn-edit-cancel" onclick="closeEditMode(${idx})">취소</button>
+                  <button class="btn-edit-save" onclick="saveEditMode(${idx})">💾 저장</button>
+                </div>
+              </div>
+              <div class="edit-body">
+                <div>
+                  <div class="detail-label" style="margin-bottom:8px;">QA 평가</div>
+                  <table class="edit-tbl">
+                    <thead><tr><th style="width:44%">항목</th><th style="width:18%">점수</th><th>메모</th></tr></thead>
+                    <tbody>
+                      ${qaVals.map((x, i) => `<tr>
+                        <td>${x.name}<div style="font-size:10px;color:var(--mt);">${x.cat} · 배점 ${x.max}</div></td>
+                        <td><select class="qa-score-sel ${qaScoreClass(x.score, x.max)}" id="em-qa-${idx}-${i}" data-max="${x.max}" onchange="this.className='qa-score-sel '+qaScoreClass(Number(this.value),${x.max})">
+                          ${Array.from({length:x.max+1},(_,v)=>x.max-v).map(v=>`<option value="${v}" ${v===x.score?'selected':''}>${v}</option>`).join('')}
+                        </select></td>
+                        <td><textarea class="edit-inp" rows="3" id="em-qa-memo-${idx}-${i}" oninput="autoGrow(this)" placeholder="사유(선택)" style="resize:vertical;white-space:pre-wrap;line-height:1.5;">${esc(x.memo)}</textarea></td>
+                      </tr>`).join('')}
+                    </tbody>
+                  </table>
+                </div>
+                <div class="field"><label>코칭 결과</label>
+                  <div>${coachEditorHtml("em" + idx)}</div>
+                </div>
+                <div class="field"><label>추후 피드백 예정</label>
+                  <textarea class="text-area" id="em-feedback-${idx}" oninput="autoGrow(this)" placeholder="추후 피드백 예정 내용">${esc(feedback)}</textarea>
+                </div>
+                <div class="field"><label>비고</label>
+                  <textarea class="text-area" id="em-note-${idx}" oninput="autoGrow(this)" placeholder="기타 메모사항">${esc(note)}</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>`;
+    }).join("");
+    rows.forEach((r, idx) => coachRender("em" + idx, parseCoaching(r[4 + QA_ITEMS.length * 2 + 1] || "")));
+
+  } catch(e) {
+    console.error("loadHistory error:", e);
+    list.innerHTML = `<div class="history-empty" style="color:var(--rdt);">기록을 불러올 수 없어요.<br><small>${e.message}</small></div>`;
+  }
+}
+
+/* ── 저장 (Apps Script) ── */
+async function saveRecord() {
+  if (!currentMember) return;
+  const btn  = document.getElementById("saveBtn");
+  const text = document.getElementById("saveBtnText");
+  btn.disabled = true;
+  text.innerHTML = `<div class="dot"></div> 저장 중...`;
+
+  const payload = {
+    action:    "create",
+    member:    currentMember.name,
+    squad:     currentMember.squad,
+    date:      document.getElementById("f-date").value,
+    monitor:   document.getElementById("f-monitor").value,
+    qa:        QA_ITEMS.map((item, i) => ({
+      score: Number(document.getElementById(`qa-score-${i}`)?.value) || 0,
+      memo:  document.getElementById(`qa-memo-${i}`)?.value || ""
+    })),
+    totalScore: QA_ITEMS.reduce((s, item, i) => s + (Number(document.getElementById(`qa-score-${i}`)?.value) || 0), 0),
+    coaching:   getCoachingText(),
+    feedback:   document.getElementById("f-feedback").value,
+    note:       document.getElementById("f-note").value,
+    uniqueKey:  Date.now() + "_" + Math.random().toString(36).slice(2, 7)
+  };
+
+  try {
+    const res    = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+    const result = await res.json();
+    if (result.status === "ok") {
+      showToast("✅ Google Sheets에 저장되었습니다!", false);
+      await loadHistory();
+      resetForm();
+      switchTab("history", document.querySelectorAll(".tab-btn")[0]);
+    } else {
+      throw new Error(result.message || "저장 실패");
+    }
+  } catch(e) {
+    showToast("❌ 저장에 실패했어요. Apps Script URL을 확인해주세요.", true);
+  }
+
+  btn.disabled = false;
+  text.textContent = "💾 Google Sheets에 저장";
+}
+
+/* ── 유틸 ── */
+
+function buildQaBody() {
+  let html = "";
+  let lastCat = null;
+  QA_ITEMS.forEach((item, i) => {
+    if (item.cat !== lastCat) {
+      if (lastCat !== null) html += `</div>`;
+      const catMax = QA_ITEMS.filter(x => x.cat === item.cat).reduce((s, x) => s + x.max, 0);
+      html += `<div class="qa-cat"><div class="qa-cat-head"><span>${item.cat}</span><span class="qa-cat-max">${catMax}점</span></div>`;
+      lastCat = item.cat;
+    }
+    html += `
+      <div class="qa-item" id="qa-item-${i}">
+        <div class="qa-item-top">
+          <span class="qa-item-name">${item.name}<span class="qa-flag hidden" id="qa-flag-${i}"></span><span class="qa-auto" id="qa-auto-${i}"></span></span>
+          <select class="qa-score-sel full" id="qa-score-${i}" data-max="${item.max}" onchange="onQaScoreChange(${i})">
+            ${Array.from({length:item.max+1},(_,v)=>item.max-v).map(v=>`<option value="${v}" ${v===item.max?'selected':''}>${v} / ${item.max}</option>`).join('')}
+          </select>
+        </div>
+        <div class="qa-guide"><div><b>채점 기준</b>${esc(item.guide)}</div><div class="ded"><b>감점 기준</b>${esc(item.deduct)}</div></div>
+        <div class="qa-hint hidden" id="qa-hint-${i}"></div>
+        <textarea class="qa-memo hidden" id="qa-memo-${i}" rows="2" placeholder="감점 사유 · 통화 구간 · 근거 발화" oninput="autoGrow(this)" onfocus="setCiteTarget(${i})"></textarea>
+      </div>`;
+  });
+  html += `</div>`;
+  document.getElementById("qaBody").innerHTML = html;
+  ensureCoachEditor();
+  updateQaTotal();
+}
+
+function onQaScoreChange(i) {
+  const sel  = document.getElementById(`qa-score-${i}`);
+  const memo = document.getElementById(`qa-memo-${i}`);
+  const max  = Number(sel.dataset.max);
+  const val  = Number(sel.value);
+  sel.className = "qa-score-sel " + qaScoreClass(val, max);
+  const autoEl = document.getElementById(`qa-auto-${i}`);
+  if (autoEl && sel.dataset.auto !== undefined) {
+    const a = Number(sel.dataset.auto);
+    autoEl.textContent = val === a ? `1차 ${a}점` : `1차 ${a}점 → ${val}점 (수정)`;
+    autoEl.classList.toggle("changed", val !== a);
+  }
+  if (memo) { memo.classList.toggle("hidden", val >= max && !memo.value.trim()); autoGrow(memo); }
+  setCiteTarget(i);
+  updateQaTotal();
+}
+
+/* ── 녹취록(STT) 불러오기 · 근거 발화 넣기 ── */
+let sttLines  = [];
+let citeTarget = 0;
+
+function esc(v) {
+  return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function parseSttLines(raw) {
+  const reDict = /['"]time['"]\s*:\s*(['"])(.*?)\1\s*,\s*['"]speaker['"]\s*:\s*(['"])(.*?)\3\s*,\s*['"]sentence['"]\s*:\s*(['"])([\s\S]*)\5\s*\}\s*,?\s*$/;
+  const rePlain = /^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s*(상담원|고객)\s*[:：]\s*(.*)$/;
+  const out = [];
+  raw.split(/\r?\n/).forEach(line => {
+    if (!line.trim()) return;
+    let m = line.match(reDict);
+    if (m) { out.push({ time: m[2].trim().slice(-8), speaker: m[4].trim(), text: m[6].trim() }); return; }
+    m = line.trim().match(rePlain);
+    if (m) { out.push({ time: m[1], speaker: m[2], text: m[3].trim() }); return; }
+    out.push({ time: "", speaker: "", text: line.trim() });
+  });
   return out;
 }
 
-function setupSheet(sheet) {
-  const headers = ["이름","스쿼드","날짜","진행자"];
-  QA_ITEMS.forEach(item => { headers.push(item.name + " 점수", item.name + " 메모"); });
-  headers.push("총점","코칭내용","피드백예정","비고","저장시간");
-
-  sheet.appendRow(headers);
-  const hRange = sheet.getRange(1, 1, 1, headers.length);
-  hRange.setFontWeight("bold").setBackground("#3E749F").setFontColor("#ffffff")
-        .setHorizontalAlignment("center").setVerticalAlignment("middle");
-  sheet.setFrozenRows(1);
-  sheet.setRowHeight(1, 36);
+async function loadStt() {
+  const f = document.getElementById("sttFile").files[0];
+  if (!f) { clearStt(); return; }
+  let raw = await f.text();
+  if (raw.includes("\uFFFD")) { try { raw = new TextDecoder("euc-kr").decode(await f.arrayBuffer()); } catch(e) {} }
+  sttLines = parseSttLines(raw);
+  renderStt();
+  if (!sttLines.length) showToast("파일에서 녹취 내용을 찾지 못했어요.", true);
 }
 
-function formatDataRow(sheet, rowNum, qa) {
-  sheet.setRowHeight(rowNum, 30);
-  QA_ITEMS.forEach((item, i) => {
-    const col = 5 + i * 2; // 해당 항목의 점수 컬럼 (1-based)
-    const cell = sheet.getRange(rowNum, col);
-    cell.setHorizontalAlignment("center");
-    const score = Number(qa[i] && qa[i].score);
-    const s = isNaN(score) ? 0 : score;
-    if (s === item.max)      cell.setBackground("#ECFDF5").setFontColor("#065F46");
-    else if (s === 0)        cell.setBackground("#FEF2F2").setFontColor("#991B1B");
-    else                     cell.setBackground("#FFFBEB").setFontColor("#92400E");
+function renderStt() {
+  const wrap = document.getElementById("sttWrap");
+  const emp = document.getElementById("sttEmpty");
+  if (!sttLines.length) { wrap.style.display = "none"; if (emp) emp.style.display = "block"; return; }
+  wrap.style.display = "flex";
+  if (emp) emp.style.display = "none";
+  document.getElementById("sttTarget").innerHTML = QA_ITEMS.map((q, i) =>
+    `<option value="${i}">${i + 1}. ${q.name}</option>`).join("");
+  document.getElementById("sttViewer").innerHTML = sttLines.map((l, i) =>
+    `<div class="stt-line ${l.speaker === "상담원" ? "agent" : "cust"}" id="stt-line-${i}" onclick="citeLine(${i})">` +
+    `<span class="stt-time">${esc(l.time)}</span><span class="stt-sp">${esc(l.speaker)}</span><span class="stt-tx">${esc(l.text)}</span></div>`).join("");
+  document.getElementById("sttFilter").value = "";
+  document.getElementById("sttCount").textContent = `${sttLines.length}줄`;
+  setCiteTarget(citeTarget);
+}
+
+function filterStt() {
+  const kw = document.getElementById("sttFilter").value.trim().toLowerCase();
+  sttLines.forEach((l, i) => {
+    const el = document.getElementById(`stt-line-${i}`);
+    if (el) el.classList.toggle("hidden", !!kw && !(`${l.speaker} ${l.text}`.toLowerCase().includes(kw)));
   });
-  const totalCol = 5 + QA_ITEMS.length * 2; // 총점 컬럼
-  sheet.getRange(rowNum, totalCol).setFontWeight("bold").setHorizontalAlignment("center").setBackground("#F7FBFE");
-  sheet.getRange(rowNum, totalCol + 1).setWrap(true); // 코칭내용
 }
 
-function doGet() {
-  return ContentService.createTextOutput(JSON.stringify({ status: "ok" }))
-    .setMimeType(ContentService.MimeType.JSON);
+function setCiteTarget(i) {
+  citeTarget = i;
+  document.querySelectorAll(".qa-item.target").forEach(el => el.classList.remove("target"));
+  const row = document.getElementById(`qa-item-${i}`);
+  if (row) row.classList.add("target");
+  const sel = document.getElementById("sttTarget");
+  if (sel && sel.options.length) sel.value = String(i);
 }
+
+function citeLine(i) {
+  const l = sttLines[i];
+  const memo = document.getElementById(`qa-memo-${citeTarget}`);
+  if (!l || !memo) return;
+  const quote = `${l.time ? `[${l.time}] ` : ""}${l.speaker ? `${l.speaker}: ` : ""}"${l.text}"`;
+  if (memo.value.includes(quote)) { showToast("이미 추가된 발화예요."); return; }
+  let v = memo.value.replace(/\s+$/, "");
+  if (!v.includes("▶ 근거 발화")) v += (v ? "\n" : "") + "▶ 근거 발화";
+  memo.value = v + "\n" + quote;
+  memo.classList.remove("hidden");
+  autoGrow(memo);
+  document.getElementById(`stt-line-${i}`).classList.add("cited");
+  showToast(`📎 ${citeTarget + 1}. ${QA_ITEMS[citeTarget].name} 메모에 추가했어요`);
+}
+
+/* ── 규칙 기반 1차 자동 채점 (API 없음) ──
+   녹취 문구·패턴으로 잡을 수 있는 항목만 점수를 매기고,
+   의미 판단이 필요한 항목은 "직접 확인"으로 남깁니다. */
+function autoScoreStt(L) {
+  const N = QA_ITEMS.length;
+  const R = QA_ITEMS.map((q, i) => ({ index: i, score: q.max, status: "needs_review", reason: "", ev: [], conf: "high" }));
+  const set = (i, o) => Object.assign(R[i], o);
+  const full = (i, status, reason, conf) => set(i, { score: QA_ITEMS[i].max, status, reason, ev: [], conf: conf || "high" });
+  const deduct = (i, minus, reason, ev, conf) => set(i, { score: Math.max(0, QA_ITEMS[i].max - minus), status: "scored", reason, ev: (ev || []).slice(0, 4), conf: conf || "mid" });
+  const need = (i, reason) => set(i, { score: QA_ITEMS[i].max, status: "needs_review", reason, ev: [] });
+
+  const isA = l => l.speaker === "상담원";
+  const isC = l => l.speaker === "고객";
+  const idxA = re => L.map((l, i) => (isA(l) && re.test(l.text) ? i : -1)).filter(i => i >= 0);
+  const idxC = re => L.map((l, i) => (isC(l) && re.test(l.text) ? i : -1)).filter(i => i >= 0);
+  const sec = t => { const m = String(t || "").match(/(\d{1,2}):(\d{2})(?::(\d{2}))?$/); return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+(m[3] || 0)) : null; };
+  const len = s => String(s).replace(/\s+/g, "").length;
+  const hasTime = L.some(l => sec(l.time) != null);
+  const hasSpeaker = L.some(isA) && L.some(isC);
+
+  // ── 통화 유형 판단 ──
+  const early = L.slice(0, 8).filter(isA).map(l => l.text).join(" ");
+  let callType = "unknown";
+  if (/(전화|연락)\s?드렸|통화했던|연락\s?드립니다|전화\s?드렸습니다|연락\s?드린/.test(early) || (L[0] && isC(L[0]) && /여보세요/.test(L[0].text))) callType = "outbound";
+  else if (L[0] && isA(L[0])) callType = "inbound";
+
+  if (!hasSpeaker) {
+    R.forEach((r, i) => need(i, "녹취에 상담원/고객 구분이 없어 자동 채점이 어려워요."));
+    return { callType, items: R };
+  }
+
+  // 0 표준 첫인사
+  if (callType === "outbound") full(0, "not_applicable", "상담원이 먼저 거는 아웃바운드 통화로 보여요.");
+  else if (callType === "inbound") {
+    const t = L.filter(isA).slice(0, 2).map(l => l.text).join(" ");
+    const a = /감사합니다/.test(t), b = /아이.{0,2}케어|아이샵/.test(t);
+    const firstA = L.findIndex(isA);
+    if (a && b) full(0, "scored", "표준 첫인사가 확인돼요.");
+    else deduct(0, a || b ? 2 : 3, `표준 첫인사에서 ${!a && !b ? "인사말과 회사명이" : !a ? "'감사합니다' 인사가" : "회사명이"} 확인되지 않아요. (STT 오인식이면 직접 수정해주세요)`, [firstA], "mid");
+  } else need(0, "통화 시작 상황을 알 수 없어요.");
+
+  // 1 끝인사
+  {
+    const tail = L.map((l, i) => i).slice(-6).filter(i => isA(L[i]));
+    const txt = tail.map(i => L[i].text).join(" ");
+    const ask = /추가\s?(로\s?)?(문의|궁금)|더\s?(문의|궁금|도와)|다른\s?(문의|궁금)/.test(txt);
+    const bye = /감사합니다|고맙습니다|좋은\s?(하루|저녁|오후|주말)|수고|안녕히|편안한/.test(txt);
+    if (!tail.length) need(1, "통화 마지막 상담원 발화를 찾지 못했어요.");
+    else if (ask && bye) full(1, "scored", "추가 문의 확인과 끝인사가 확인돼요.");
+    else deduct(1, (ask ? 0 : 2) + (bye ? 0 : 2), `마지막 상담원 발화에서 ${!ask && !bye ? "추가 문의 확인과 끝인사가" : !ask ? "추가 문의 확인이" : "끝인사가"} 확인되지 않아요. (고객이 먼저 끊었는지는 음성 확인이 필요해요)`, [tail[tail.length - 1]], "mid");
+  }
+
+  // 2 추임새 (상담원 군더더기 단어)
+  {
+    const FILL = new Set(["아", "어", "음", "요고", "저요"]);
+    const per = [];
+    let total = 0;
+    L.forEach((l, i) => {
+      if (!isA(l)) return;
+      const n = l.text.split(/\s+/).filter(w => FILL.has(w.replace(/[.,…]/g, ""))).length;
+      if (n) { per.push([i, n]); total += n; }
+    });
+    per.sort((a, b) => b[1] - a[1]);
+    const top = per.slice(0, 3).map(p => p[0]);
+    const minus = total <= 8 ? 0 : total <= 14 ? 1 : total <= 22 ? 2 : total <= 32 ? 3 : 4;
+    if (!minus) full(2, "scored", `'아/어/음' 같은 추임새가 ${total}회로 통화 내내 이어지진 않았어요.`);
+    else deduct(2, minus, `상담원 발화에서 '아/어/음' 같은 추임새가 통화 내내 약 ${total}회 감지돼요. (STT가 추임새를 빼거나 넣을 수 있어 참고용이에요)`, top, "low");
+  }
+
+  // 3,4 음성/어조
+  need(3, "음성 품질·발음은 녹취 텍스트만으로 판단할 수 없어요.");
+  need(4, "목소리 톤과 감정은 녹취 텍스트만으로 판단할 수 없어요.");
+
+  // 5 경청 (고객 발화 직후 1초 이내에 상담원이 치고 들어온 경우 → 말 끊기 추정)
+  if (!hasTime) need(5, "시간 정보가 없어 끼어들기를 추정할 수 없어요.");
+  else {
+    const hits = [];
+    for (let i = 1; i < L.length; i++) {
+      const p = L[i - 1], c = L[i];
+      if (isC(p) && isA(c) && len(p.text) >= 8 && len(c.text) > 3) {
+        const d = sec(c.time) - sec(p.time);
+        if (d != null && d >= 0 && d <= 1) hits.push([i - 1, i]);
+      }
+    }
+    if (!hits.length) full(5, "scored", "고객 발화 직후 곧바로 끼어드는 구간은 감지되지 않았어요.", "low");
+    else deduct(5, hits.length === 1 ? 2 : 3, `고객 발화 직후 1초 이내에 상담원 발화가 시작된 구간이 ${hits.length}곳 있어요. (시간 기반 추정이라 음성 확인이 필요해요)`, hits.flat(), "low");
+  }
+
+  // 6~8 대기(조회) 관련
+  {
+    const cue = idxA(/확인(을)?\s?(해\s?)?(보겠|보고\s?(안내|연락|말씀)|드리겠|볼게)|조회(를)?\s?(해\s?)?(보겠|드리겠)|알아보고|알아봐/);
+    const ok = i => [i - 1, i, i + 1, i + 2].some(j => L[j] && isA(L[j]) && /잠시만|잠깐만|기다려\s?주|양해/.test(L[j].text));
+    if (!cue.length) {
+      full(6, "not_applicable", "조회·확인을 위해 대기하는 상황이 감지되지 않았어요.", "mid");
+      full(8, "not_applicable", "대기 후 복귀 상황이 감지되지 않았어요.", "mid");
+    } else {
+      const withOk = cue.filter(ok);
+      if (withOk.length === cue.length) full(6, "scored", "확인 전 양해 멘트가 확인돼요.");
+      else deduct(6, withOk.length ? 2 : 3, `확인·조회를 시작하는 발화 ${cue.length}건 중 ${cue.length - withOk.length}건에서 사전 양해 멘트(잠시만 기다려 주세요 등)가 확인되지 않아요.`, cue.filter(i => !ok(i)), "low");
+      const thank = cue.filter(i => [i + 1, i + 2, i + 3, i + 4].some(j => L[j] && isA(L[j]) && /기다려\s?주셔서|감사합니다/.test(L[j].text)));
+      if (thank.length === cue.length) full(8, "scored", "대기 후 감사 표현이 확인돼요.", "low");
+      else deduct(8, 3, "확인 후 복귀 시 '기다려 주셔서 감사합니다'가 확인되지 않아요.", cue.filter(i => !thank.includes(i)), "low");
+    }
+  }
+
+  // 7 묵음/공백 (시간 간격에서 발화 길이를 뺀 최소 공백)
+  if (!hasTime) need(7, "시간 정보가 없어 공백을 추정할 수 없어요.");
+  else {
+    const gaps = [];
+    for (let i = 1; i < L.length; i++) {
+      const a = sec(L[i - 1].time), b = sec(L[i].time);
+      if (a == null || b == null) continue;
+      const est = Math.max(len(L[i - 1].text), len(L[i].text)) / 5;
+      const silence = (b - a) - est;
+      if (silence >= 8) gaps.push([i - 1, i, Math.round(silence)]);
+    }
+    if (!gaps.length) full(7, "scored", "5초 이상 공백으로 보이는 구간은 감지되지 않았어요.", "low");
+    else deduct(7, gaps.length === 1 ? 1 : gaps.length <= 3 ? 2 : 3, `발화 사이에 8초 이상 비어 보이는 구간이 ${gaps.length}곳 있어요. (시간 기반 추정이라 음성 확인이 필요해요)`, gaps.flatMap(g => [g[0], g[1]]), "low");
+  }
+
+  // 9 본인/매장 정보 식별
+  if (callType === "outbound") need(9, "상담원이 먼저 거는 콜이어도 통화 상대가 대표자·점주 본인인지 확인했는지는 직접 확인해주세요.");
+  else {
+    const hit = idxA(/(상호|가게\s?이름|매장\s?(명|이름)|사업자|성함|연락처|전화번호).{0,12}(말씀|알려|확인|불러)/);
+    if (hit.length) full(9, "scored", "본인/매장 정보 확인 발화가 확인돼요.");
+    else if (callType === "inbound") deduct(9, 5, "상호명·사업자번호 등 필수 정보를 확인하는 발화가 감지되지 않아요.", [], "low");
+    else need(9, "통화 유형을 알 수 없어요.");
+  }
+
+  // 10 이전 상담 이력 확인
+  {
+    const bad = idxA(/어떤\s?(내용|문의|일)(으)?로\s?(통화|전화|문의)|무슨\s?(내용|일)(으)?로\s?(통화|전화|문의)/);
+    if (bad.length) deduct(10, 5, "이전 상담 내용을 고객에게 다시 묻는 발화가 있어요.", bad, "mid");
+    else need(10, "전산에서 이력을 조회했는지는 녹취 텍스트만으로 알 수 없어요.");
+  }
+
+  // 11 니즈/공감, 21 감정 케어·사과
+  const distress = idxC(/미치겠|미쳐버|짜증|화가\s?나|열\s?받|답답|황당|불만|어이\s?없|죽겠|진짜\s?너무/);
+  const empathy = idxA(/불편|이해(가|합니다|해요)|걱정|답답|속상|그러셨|힘드/);
+  const sorry = idxA(/죄송|사과|송구|불편을\s?드/);
+  const repeatReq = idxC(/달라(고요|니깐요|니까요|니까)|못\s?알아들|말을\s?못|제\s?말은|내\s?말은|그게\s?아니라|그러니까\s?제가/);
+  if (distress.length && !empathy.length) deduct(11, repeatReq.length >= 3 ? 5 : 3, `고객이 불편·분노를 표현했지만 상담원의 공감 표현(불편하셨겠다/이해합니다 등)이 감지되지 않아요.${repeatReq.length >= 3 ? " 같은 요구가 반복되는데도 정리·해소되지 않았어요." : ""}`, distress, "mid");
+  else if (!distress.length) need(11, "니즈 파악과 공감 정도는 문맥 판단이 필요해요.");
+  else full(11, "scored", "고객 감정 표현 이후 상담원의 공감 표현이 확인돼요.", "low");
+
+  // 12 동문서답 (고객의 같은 요구 반복)
+  {
+    const rep = idxC(/달라(고요|니깐요|니까요|니까)|못\s?알아들|말을\s?못|제\s?말은|내\s?말은|그게\s?아니라|그러니까\s?제가/);
+    if (rep.length >= 3) deduct(12, 5, `고객이 같은 요구를 반복하거나 답답함을 표현한 발화가 ${rep.length}건 있어요. 질문과 답변이 어긋났는지 확인해주세요.`, rep, "low");
+    else if (rep.length === 2) deduct(12, 2, "고객이 같은 요구를 반복한 발화가 있어요. 답변이 어긋났는지 확인해주세요.", rep, "low");
+    else need(12, "질문과 답변이 맞았는지는 문맥 판단이 필요해요.");
+  }
+
+  // 13 지식
+  need(13, "안내 내용이 정확한지는 업무 지식으로 직접 확인해야 해요.");
+
+  // 14 추측성 단정
+  {
+    const hit = idxA(/것\s?같(아|습니다|은데|네)|일\s?거(고요|예요|에요|야|입니다|라)|할\s?거(고요|예요|에요|야|입니다)|아마(도)?\s|인\s?듯|하실\s?거/);
+    if (!hit.length) full(14, "scored", "추측성 표현이 감지되지 않았어요.");
+    else deduct(14, Math.min(5, hit.length * 2), `'~것 같아요', '~일 거예요' 같은 추측성 표현이 ${hit.length}건 있어요.`, hit, "mid");
+  }
+
+  // 15 한계 사유
+  {
+    const rhetoric = idxA(/어떻게\s.{0,25}(드려요|드리냐|드리겠|하라고요|하냐고)/);
+    if (rhetoric.length) deduct(15, rhetoric.length >= 3 ? 5 : rhetoric.length === 2 ? 3 : 2, `처리가 어려운 이유(정책·절차)를 설명하기보다 '어떻게 ~드려요?' 같은 반문으로 넘어가는 발화가 ${rhetoric.length}건 있어요.`, rhetoric, "low");
+    else need(15, "거절 시 구조적 사유를 설명했는지는 문맥 판단이 필요해요.");
+  }
+
+  // 16 방어적/법적 발화
+  {
+    const hit = idxA(/법적(으로)?|계약서|약관|규정상|고지할\s?의무|의무(가|는)\s?없|명시(되어|돼)/);
+    const cite = idxA(/(요청|말씀)하셨(었)?어요|하라고\s?하셨|말아\s?달라고|못\s?하게\s?하|거부하시|하시지\s?않았/);
+    if (hit.length) deduct(16, hit.length === 1 ? 3 : 5, `법적·계약 근거를 내세우는 표현이 ${hit.length}건 있어요.`, hit, "mid");
+    else if (cite.length) deduct(16, cite.length >= 3 ? 5 : cite.length === 2 ? 3 : 2, `고객의 불편에 먼저 공감하기보다 '~하라고 하셨다/요청하셨다/거부하신다'며 고객 쪽 상황을 내세운 방어적 응대가 ${cite.length}건 있어요.`, cite, "low");
+    else full(16, "scored", "방어적·법적 표현이 감지되지 않았어요.");
+  }
+
+  // 17 책임 전가 (즉시 0점)
+  {
+    const hit = idxA(/기억하셨어야|직접\s?(서명|동의|확인)\s?(해|하)\s?주신|하셨잖|말씀을\s?안\s?하셔서|제대로\s?(안\s?)?(읽|보|확인)|확인을\s?안\s?하|하셨어야/);
+    const blame = idxA(/(점주|고객|사장)님?(이|께서)\s?[^.?]{0,25}(못\s?하게|거부|안\s?하(시|셔)|안\s?하겠)|거부하시는데|못\s?하게\s?하시는데/);
+    if (hit.length) deduct(17, 5, "고객에게 책임을 돌리는 표현이 있어요. (기준상 즉시 0점)", hit, "mid");
+    else if (blame.length) deduct(17, 5, "상황의 원인을 고객 쪽으로 돌리는 표현('방문을 못 하게 하시는데', '거부하시는데' 등)이 있어요. (기준상 즉시 0점)", blame, "mid");
+    else full(17, "scored", "책임 전가·고객 비난 표현이 감지되지 않았어요.");
+  }
+
+  // 18 감정적 대립 (즉시 0점)
+  {
+    const strong = idxA(/라니까요|냐고요|니까요\?|말씀\s?드렸잖|말씀드렸는데도|못\s?알아들|감정\s?싸움/);
+    const weakOpen = idxA(/^아니(\s|요|에요|,)/);
+    if (strong.length) deduct(18, 4, `'~냐고요/~라니까요' 같은 따지는 말투가 ${strong.length}건 있어요. (기준상 즉시 0점)`, strong, "mid");
+    else if (weakOpen.length >= 3) deduct(18, 2, `'아니…'로 고객 말을 부정하며 시작하는 발화가 ${weakOpen.length}건 있어요.`, weakOpen, "low");
+    else full(18, "scored", "도발적·대립적 표현이 감지되지 않았어요.", "low");
+  }
+
+  // 19 제3자 전달어
+  {
+    const hit = idxA(/(하네요|하더라고요|하더라구요|그러네요|라네요|랍니다)(\s|$|[.,?])|라고\s?하(네요|더라고요|던데)/);
+    if (!hit.length) full(19, "scored", "제3자 전달어('~하네요/~하더라고요')가 감지되지 않았어요.");
+    else deduct(19, Math.min(4, hit.length), `'~하네요/~하더라고요' 같은 전달 말투가 ${hit.length}건 있어요.`, hit, "low");
+  }
+
+  // 20 핑계/둘러대기
+  {
+    const hit = idxA(/(제|저희)\s?(탓|잘못)이?\s?아니|부서가\s?(따로|달라)|담당(자)?(가|이)\s?(다르|따로|아니)|저는\s?(모르|몰라)|제\s?(소관|담당)이?\s?아니|거짓말한\s?게\s?아니/);
+    if (!hit.length) full(20, "scored", "핑계·둘러대기 표현이 감지되지 않았어요.", "low");
+    else deduct(20, Math.min(4, hit.length * 2), "책임을 피하는 해명 표현이 있어요.", hit, "mid");
+  }
+
+  // 21 사과·감정 케어
+  if (distress.length && !sorry.length) deduct(21, 3, "고객이 불편·분노를 표현했지만 사과·유감 표현(죄송합니다 등)이 감지되지 않아요.", distress, "mid");
+  else if (!distress.length) need(21, "사과가 필요한 상황이었는지는 문맥 판단이 필요해요.");
+  else full(21, "scored", "고객 감정 표현 이후 사과·유감 표현이 확인돼요.", "low");
+
+  // 22 대안 제시
+  {
+    const refuse = idxA(/안\s?됩니다|안\s?돼요|불가(능|합니다|해요)|어렵(습니다|네요|습니다만)|못\s?해\s?드|할\s?수\s?없/);
+    const offer = idxA(/대안|방법(은|이)|가능합니다|해\s?드릴\s?수|도와\s?드리|연결해\s?드리|전달해\s?드리|협의|다시\s?연락|콜백|접수/);
+    const lastA = L.map((l, i) => i).filter(i => isA(L[i])).pop();
+    const vague = lastA != null && /(말씀\s?드리겠|안내\s?드리겠|연락\s?드리겠|확인\s?(해\s?)?드리겠|전달\s?드리겠)/.test(L[lastA].text) && !/(오늘|내일|\d+\s?(시|분|일)|까지|이내|곧|바로|즉시)/.test(L[lastA].text);
+    if (refuse.length && !offer.length) deduct(22, 3, "거절 표현은 있지만 대안·협의안 제시가 감지되지 않아요.", refuse, "low");
+    else if (vague) deduct(22, 2, "마무리 때 후속 조치의 시점·담당이 구체적이지 않아요('~말씀드리겠습니다').", [lastA], "low");
+    else need(22, "대안을 충분히 제시했는지는 문맥 판단이 필요해요.");
+  }
+
+  // 23 외부기관 연계
+  {
+    const mention = idxA(/카드사|밴사|VAN|타\s?부서|담당\s?부서|이관|돌려\s?드/);
+    if (!mention.length) full(23, "not_applicable", "타 기관·부서 연결 상황이 감지되지 않았어요.", "mid");
+    else {
+      const route = idxA(/\d{2,4}[-\s]?\d{3,4}[-\s]?\d{4}|번호|연락처|문의\s?경로|직접\s?문의/);
+      if (route.length) full(23, "scored", "연결 경로·연락처 안내가 확인돼요.", "low");
+      else deduct(23, 2, "타 기관·부서를 언급했지만 연락처·문의 경로 안내가 감지되지 않아요.", mention, "low");
+    }
+  }
+
+  // 24 이력 기재
+  need(24, "상담 이력을 기재했는지는 녹취로 알 수 없어요.");
+
+  return { callType, items: R };
+}
+
+/* ── 메모 → 감점 사유 / 통화 구간 / 근거 발화 ── */
+function parseMemo(memo) {
+  const re = /^\[([^\]]+)\]\s*(?:(상담원|고객)\s*:\s*)?"(.*)"\s*(\(※[^)]*\))?\s*$/;
+  const reason = [], quotes = [], extra = [];
+  let after = false;
+  String(memo || "").split(/\r?\n/).forEach(raw => {
+    const t = raw.trim();
+    if (t.startsWith("▶ 근거 발화")) { after = true; return; }
+    if (!t) { (after ? extra : reason).push(""); return; }      // 빈 줄도 그대로 보관
+    const m = t.match(re);
+    if (m) quotes.push({ time: m[1], speaker: m[2] || "", text: m[3], warn: m[4] || "" });
+    else (after ? extra : reason).push(t);
+  });
+  const clean = a => a.join("\n").replace(/^\n+|\n+$/g, "").replace(/\n{3,}/g, "\n\n");
+  const times = quotes.map(q => q.time).filter(t => /^\d{1,2}:\d{2}/.test(t)).sort();
+  const range = !times.length ? "" : (times[0] === times[times.length - 1] ? times[0] : `${times[0]} ~ ${times[times.length - 1]}`);
+  return { reason: clean(reason), quotes, extra: clean(extra), range };
+}
+
+function memoViewHtml(memo, mode) {
+  const p = parseMemo(memo);
+  if (!p.reason && !p.quotes.length && !p.extra) return "";
+  const pdf = mode === "pdf";
+  const base = pdf ? "font-size:11px;line-height:1.65;color:#475569;" : "font-size:12px;line-height:1.65;color:var(--mt);";
+  const accent = pdf ? "#2E6088" : "var(--bld)";
+  let h = "";
+  if (p.reason) h += `<div style="${base}white-space:pre-wrap;">${esc(p.reason)}</div>`;
+  if (p.quotes.length) {
+    h += `<div style="margin-top:${p.reason ? 10 : 0}px;font-size:${pdf ? 11 : 12}px;font-weight:700;color:${accent};">${pdf ? "" : "📍 "}통화 구간 ${esc(p.range || "-")} · 근거 발화 ${p.quotes.length}건</div>`;
+    h += p.quotes.map(q =>
+      `<div style="${base}margin-top:4px;padding-left:8px;border-left:2px solid #DCEEF9;"><b style="color:${accent};">${esc(q.time)}</b> ${q.speaker ? `<b>${esc(q.speaker)}</b> ` : ""}${esc(q.text)}${q.warn ? ` <span style="color:#B45309;">${esc(q.warn)}</span>` : ""}</div>`
+    ).join("");
+  }
+  if (p.extra) h += `<div style="${base}margin-top:8px;white-space:pre-wrap;">${esc(p.extra)}</div>`;
+  return h;
+}
+
+function autoGrow(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + 2) + "px";
+}
+
+function toggleQaGuide(on) {
+  document.getElementById("qaBody").classList.toggle("hide-guide", !on);
+}
+
+function switchSide(which) {
+  document.getElementById("side-stt").classList.toggle("hidden", which !== "stt");
+  document.getElementById("side-ref").classList.toggle("hidden", which !== "ref");
+  document.getElementById("stab-stt").classList.toggle("active", which === "stt");
+  document.getElementById("stab-ref").classList.toggle("active", which === "ref");
+  if (which === "ref") renderRef();
+}
+
+function refHtml() {
+  let last = null, h = "";
+  QA_ITEMS.forEach(q => {
+    if (q.cat !== last) {
+      const tot = QA_ITEMS.filter(x => x.cat === q.cat).reduce((s, x) => s + x.max, 0);
+      h += `<div class="ref-cat"><span>${esc(q.cat)}</span><span>${tot}점</span></div>`;
+      last = q.cat;
+    }
+    h += `<div class="ref-item"><span class="pt">${q.max}점</span><div class="nm">${esc(q.name)}</div><div class="gd"><b>채점 기준</b> ${esc(q.guide)}</div><div class="dd"><b>감점 기준</b> ${esc(q.deduct)}</div></div>`;
+  });
+  return h;
+}
+
+let refRendered = false;
+async function renderRef() {
+  if (refRendered) return;
+  refRendered = true;
+  const box = document.getElementById("refBody");
+  let hasPdf = false;
+  try { const r = await fetch("qa-sheet.pdf", { method: "HEAD" }); hasPdf = r.ok; } catch (e) {}
+  if (hasPdf) {
+    box.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><a href="qa-sheet.pdf" target="_blank" style="font-size:12px;color:var(--bld);font-weight:700;">새 탭에서 크게 보기 ↗</a></div>` +
+      `<iframe src="qa-sheet.pdf#view=FitH" title="QA 세부평가표" style="flex:1;width:100%;min-height:420px;border:1px solid var(--br);border-radius:8px;"></iframe>`;
+  } else {
+    box.innerHTML = refHtml();
+  }
+}
+
+/* ── 코칭 결과 (칸칸이) : 잘한 점 / 개선할 점 카드 ── */
+function cleanReason(r) {
+  const bad = /(낮춰주세요|확인해주세요|판단되면|참고용|수정해주세요|직접 판단)/;
+  let t = String(r || "").trim();
+  const parts = t.split(/(?<=[.!?요])\s+(?=[가-힣'"(\[])/).filter(x => x && !bad.test(x));
+  t = parts.join(" ").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return t || String(r || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+const CC_FIELDS = [["coach", "코칭"], ["s1", "개선 스크립트 1"], ["s2", "개선 스크립트 2"], ["s3", "개선 스크립트 3"]];
+
+function parseCoaching(text) {
+  const t = String(text || "").replace(/\r/g, "");
+  const out = { good: [], items: [], free: "" };
+  if (!t.trim()) return out;
+  if (!/^■\s*(잘한 점|개선할 점|기타)/m.test(t)) { out.free = t.trim(); return out; }
+  const key = { "코칭": "coach", "개선스크립트1": "s1", "개선스크립트2": "s2", "개선스크립트3": "s3", "권장응대": "s1", "감점사유": "_x", "통화구간": "_x" };   // 예전 기록(감점 사유·통화 구간·권장 응대)도 읽어요
+  let sec = null, cur = null, field = null;
+  t.split("\n").forEach(raw => {
+    const line = raw.replace(/\s+$/, "");
+    let m;
+    if ((m = line.match(/^■\s*(잘한 점|개선할 점|기타)/))) { sec = m[1]; cur = null; field = null; return; }
+    if (sec === "잘한 점") { const g = line.replace(/^\s*[-•·]\s*/, "").trim(); if (g) out.good.push(g); return; }
+    if (sec === "기타") { out.free += (out.free ? "\n" : "") + line; return; }
+    if (sec === "개선할 점") {
+      if ((m = line.match(/^\[(\d+)\]\s*(.+?)\s*\((\d+)\/(\d+)\)\s*$/))) {
+        cur = { name: m[2], score: +m[3], max: +m[4], coach: "", s1: "", s2: "", s3: "", _x: "" };
+        out.items.push(cur); field = null; return;
+      }
+      if (!cur) return;
+      if ((m = line.match(/^·\s*(감점 사유|통화 구간|코칭|권장 응대|개선 스크립트\s?[123])\s*:\s*(.*)$/))) { field = key[m[1].replace(/\s/g, "")]; cur[field] = m[2]; return; }
+      if (field) cur[field] += "\n" + line.trim();      // 빈 줄도 유지
+    }
+  });
+  out.items.forEach(it => {
+    ["coach", "s1", "s2", "s3"].forEach(k => { it[k] = String(it[k]).replace(/^\n+|\n+$/g, "").replace(/\n{3,}/g, "\n\n"); });
+    delete it._x;
+  });
+  out.free = out.free.trim();
+  return out;
+}
+
+function serializeCoaching(d) {
+  const L = [];
+  const good = (d.good || []).map(x => String(x).trim()).filter(Boolean);
+  const items = d.items || [];
+  if (good.length) { L.push("■ 잘한 점"); good.forEach(g => L.push("- " + g)); L.push(""); }
+  if (items.length) {
+    L.push("■ 개선할 점");
+    items.forEach((it, n) => {
+      L.push(`[${n + 1}] ${it.name} (${it.score}/${it.max})`);
+      CC_FIELDS.forEach(([k, label]) => { const v = String(it[k] || "").trim(); if (v) L.push(`· ${label}: ${v}`); });
+      L.push("");
+    });
+  }
+  const free = String(d.free || "").trim();
+  if (free) { if (!good.length && !items.length) return free; L.push("■ 기타", free); }
+  return L.join("\n").trim();
+}
+
+function coachEditorHtml(p) {
+  return `
+    <div class="cg-box"><div class="cg-title"><span>👍 잘한 점</span><span class="cg-hint">한 줄에 하나씩</span></div>
+      <textarea class="cc-ta" id="${p}-good" rows="2" oninput="autoGrow(this)" placeholder="잘한 점을 한 줄에 하나씩 적어주세요"></textarea></div>
+    <div class="cg-title2">🛠 개선할 점 · 코칭</div>
+    <div class="cc-list" id="${p}-items"></div>
+    <div class="cc-add"><select id="${p}-add" onfocus="coachRefreshAdd('${p}')"></select><button type="button" class="mini-btn" onclick="coachAddItem('${p}')">＋ 항목 추가</button></div>
+    <div class="cg-box" id="${p}-freebox" style="display:none;margin-top:12px;"><div class="cg-title"><span>기타 코칭 메모</span></div>
+      <textarea class="cc-ta" id="${p}-free" rows="2" oninput="autoGrow(this)"></textarea></div>`;
+}
+
+function coachCardHtml(p, it) {
+  const idx = QA_ITEMS.findIndex(q => q.name === it.name);
+  const col = it.score <= 0 ? ["#FEF2F2", "#991B1B"] : ["#FFFBEB", "#92400E"];
+  const ta = (k, ph) => `<textarea class="cc-ta" data-k="${k}" rows="1" oninput="autoGrow(this)" placeholder="${ph}">${esc(it[k] || "")}</textarea>`;
+  return `<div class="cc" data-name="${esc(it.name)}" data-i="${idx}" data-score="${it.score}" data-max="${it.max}">
+    <div class="cc-head"><span class="cc-no"></span><span class="cc-name">${esc(it.name)}</span>
+      <span class="cc-score" style="background:${col[0]};color:${col[1]};">${it.score} / ${it.max}</span>
+      <button type="button" class="cc-x" title="이 항목 빼기" onclick="coachRemove(this,'${p.replace(/'/g, "")}')">✕</button></div>
+    <div class="cc-row"><div class="cc-lbl">코칭</div><div>${ta("coach", "코칭 내용")}</div></div>
+    <div class="cc-row"><div class="cc-lbl">개선 스크립트</div><div class="cc-sc">
+      <div class="cc-scr"><span class="cc-sn">1</span>${ta("s1", "스크립트 1")}</div>
+      <div class="cc-scr"><span class="cc-sn">2</span>${ta("s2", "스크립트 2")}</div>
+      <div class="cc-scr"><span class="cc-sn">3</span>${ta("s3", "스크립트 3")}</div></div></div></div>`;
+}
+
+function coachRender(p, d) {
+  const g = document.getElementById(`${p}-good`);
+  if (!g) return;
+  g.value = (d.good || []).join("\n");
+  const list = document.getElementById(`${p}-items`);
+  list.innerHTML = (d.items || []).length ? d.items.map(it => coachCardHtml(p, it)).join("")
+    : `<div class="cc-empty">감점 항목이 정리되면 여기에 칸으로 나눠서 보여요. 1차 평가 후 자동으로 채워지고, 아래 '＋ 항목 추가'로 직접 넣을 수도 있어요.</div>`;
+  const fb = document.getElementById(`${p}-freebox`), fr = document.getElementById(`${p}-free`);
+  fr.value = d.free || "";
+  fb.style.display = d.free ? "block" : "none";
+  list.querySelectorAll("textarea").forEach(autoGrow); autoGrow(g); if (d.free) autoGrow(fr);
+  coachRefreshAdd(p);
+}
+
+function coachCollect(p) {
+  const g = document.getElementById(`${p}-good`);
+  const d = { good: g ? g.value.split("\n").map(x => x.replace(/^\s*[-•·]\s*/, "").trim()).filter(Boolean) : [], items: [], free: "" };
+  document.querySelectorAll(`#${p}-items .cc`).forEach(c => {
+    const it = { name: c.dataset.name, score: +c.dataset.score, max: +c.dataset.max };
+    c.querySelectorAll("[data-k]").forEach(el => { it[el.dataset.k] = el.value; });
+    d.items.push(it);
+  });
+  const fr = document.getElementById(`${p}-free`);
+  if (fr) d.free = fr.value;
+  return d;
+}
+
+function coachScoreMemo(p, i) {
+  if (p === "f") return { score: Number(document.getElementById(`qa-score-${i}`).value) || 0, memo: document.getElementById(`qa-memo-${i}`).value };
+  const idx = p.slice(2);
+  const s = document.getElementById(`em-qa-${idx}-${i}`), m = document.getElementById(`em-qa-memo-${idx}-${i}`);
+  return { score: s ? Number(s.value) || 0 : QA_ITEMS[i].max, memo: m ? m.value : "" };
+}
+
+function coachRefreshAdd(p) {
+  const sel = document.getElementById(`${p}-add`);
+  if (!sel) return;
+  const used = new Set([...document.querySelectorAll(`#${p}-items .cc`)].map(c => c.dataset.name));
+  const opts = [];
+  QA_ITEMS.forEach((q, i) => {
+    const sc = coachScoreMemo(p, i).score;
+    if (sc < q.max && !used.has(q.name)) opts.push(`<option value="${i}">${esc(q.name)} (${sc}/${q.max})</option>`);
+  });
+  sel.innerHTML = opts.length ? opts.join("") : `<option value="">추가할 감점 항목이 없어요</option>`;
+}
+
+function coachAddItem(p) {
+  const sel = document.getElementById(`${p}-add`);
+  if (!sel || sel.value === "") return;
+  const i = Number(sel.value), q = QA_ITEMS[i], sm = coachScoreMemo(p, i);
+  const list = document.getElementById(`${p}-items`);
+  const empty = list.querySelector(".cc-empty"); if (empty) empty.remove();
+  list.insertAdjacentHTML("beforeend", coachCardHtml(p, { name: q.name, score: sm.score, max: q.max, coach: q.coach, s1: q.scripts[0], s2: q.scripts[1], s3: q.scripts[2] }));
+  list.querySelectorAll("textarea").forEach(autoGrow);
+  coachRefreshAdd(p);
+}
+
+function coachRemove(btn, p) {
+  btn.closest(".cc").remove();
+  const list = document.getElementById(`${p}-items`);
+  if (!list.querySelector(".cc")) list.innerHTML = `<div class="cc-empty">감점 항목이 정리되면 여기에 칸으로 나눠서 보여요.</div>`;
+  coachRefreshAdd(p);
+}
+
+function ensureCoachEditor() {
+  const box = document.getElementById("coachEditor");
+  if (box && !document.getElementById("f-good")) { box.innerHTML = coachEditorHtml("f"); coachRender("f", { good: [], items: [], free: "" }); }
+}
+
+function getCoachingText() { return serializeCoaching(coachCollect("f")); }
+function setCoachingText(t) { ensureCoachEditor(); coachRender("f", parseCoaching(t)); }
+
+/* 현재 점수·메모 기준 코칭 초안 (감점이 큰 상위 5개) */
+function buildCoachingData() {
+  const val = i => Number(document.getElementById(`qa-score-${i}`).value) || 0;
+  const good = [], bad = [];
+  QA_ITEMS.forEach((q, i) => {
+    const score = val(i);
+    const flag = document.getElementById(`qa-flag-${i}`).textContent;
+    if (score < q.max) bad.push({ i, q, score });
+    else if (flag !== "직접 확인" && flag !== "해당 없음" && flag !== "추정") good.push({ i, q });
+  });
+  good.sort((a, b) => b.q.max - a.q.max || a.i - b.i);
+  bad.sort((a, b) => (b.q.max - b.score) - (a.q.max - a.score) || a.i - b.i);
+  return {
+    good: good.slice(0, 5).map(x => x.q.good),
+    items: bad.slice(0, 5).map(x => ({ name: x.q.name, score: x.score, max: x.q.max, coach: x.q.coach, s1: x.q.scripts[0], s2: x.q.scripts[1], s3: x.q.scripts[2] })),
+    free: ""
+  };
+}
+
+function fillCoachingDraft() { ensureCoachEditor(); coachRender("f", buildCoachingData()); }
+
+function regenCoaching() {
+  if (getCoachingText().trim() && !confirm("현재 점수·메모 기준으로 코칭 결과를 새로 작성할까요? (기존 내용은 덮어써져요)")) return;
+  fillCoachingDraft();
+  showToast("✅ 코칭 결과를 새로 작성했어요. 확인 후 수정해주세요.");
+}
+
+/* 기록 상세 · PDF 공용: 코칭 결과를 칸으로 보여주기 (칸 단위 블록 목록) */
+function coachingBlocks(text, mode) {
+  const d = parseCoaching(text);
+  if (!d.good.length && !d.items.length && !d.free) return [];
+  const pdf = mode === "pdf";
+  const ink = pdf ? "#0F172A" : "var(--tx)", mut = pdf ? "#64748B" : "var(--mt)", acc = pdf ? "#2E6088" : "var(--bld)";
+  const blocks = [];
+  let head = pdf ? `<div style="font-size:15px;font-weight:700;color:${ink};margin:6px 0 10px;padding-top:6px;border-top:2px solid #DCEEF9;">코칭 결과</div>` : "";
+  if (d.good.length) {
+    head += `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 14px;margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:6px;">잘한 점</div>` +
+            d.good.map(g => `<div style="font-size:12px;line-height:1.65;color:#14532D;">· ${esc(g)}</div>`).join("") + `</div>`;
+  }
+  const row = (label, html) => `<tr><td style="width:84px;padding:8px 12px;color:${mut};font-weight:700;font-size:11px;vertical-align:top;white-space:nowrap;border-top:1px solid #EEF2F6;">${label}</td>` +
+    `<td style="padding:8px 12px;font-size:12px;line-height:1.65;color:${ink};white-space:pre-wrap;word-break:break-word;border-top:1px solid #EEF2F6;">${html}</td></tr>`;
+  const cards = d.items.map((it, n) => {
+    const col = it.score <= 0 ? ["#FEF2F2", "#991B1B"] : ["#FFFBEB", "#92400E"];
+    const rows = [];
+    if (String(it.coach || "").trim()) rows.push(row("코칭", esc(it.coach)));
+    const sc = ["s1", "s2", "s3"].map((k, i) => String(it[k] || "").trim() ? `<div style="margin-top:${i ? 6 : 0}px;"><b style="color:${acc};">${"①②③"[i]}</b> ${esc(it[k])}</div>` : "").join("");
+    if (sc) rows.push(row("개선 스크립트", sc));
+    return `<div class="coach-card" style="border:1px solid #DCEEF9;border-radius:8px;margin-bottom:12px;overflow:hidden;">` +
+      `<div style="background:#EAF3FA;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;"><span style="font-size:12px;font-weight:700;color:#2E6088;">${n + 1}. ${esc(it.name)}</span>` +
+      `<span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px;background:${col[0]};color:${col[1]};white-space:nowrap;">${it.score} / ${it.max}</span></div>` +
+      `<table style="width:100%;table-layout:fixed;border-collapse:collapse;">${rows.join("")}</table></div>`;
+  });
+  if (cards.length) head += `<div style="font-size:12px;font-weight:700;color:${acc};margin:2px 0 8px;">개선할 점 · 코칭</div>` + cards[0];
+  if (head) blocks.push(head);
+  cards.slice(1).forEach(c => blocks.push(c));
+  if (d.free) blocks.push(`<div style="border:1px solid #E2E8F0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;line-height:1.65;white-space:pre-wrap;color:${ink};">${esc(d.free)}</div>`);
+  return blocks;
+}
+
+function coachingHtml(text, mode) { return coachingBlocks(text, mode).join(""); }
+
+function evText(e) {
+  return `${e.time ? `[${e.time}] ` : ""}${e.speaker ? `${e.speaker}: ` : ""}"${e.text}"${e.verified === false ? " (※원문 일치 확인 필요)" : ""}`;
+}
+
+function scoreMemoText(it) {
+  let t = it.reason || "";
+  if (it.evidence && it.evidence.length) t += "\n▶ 근거 발화\n" + it.evidence.map(evText).join("\n");
+  return t;
+}
+
+function confirmOverwrite() {
+  const touched = QA_ITEMS.some((q, i) => {
+    const sel = document.getElementById(`qa-score-${i}`), memo = document.getElementById(`qa-memo-${i}`);
+    return (sel && Number(sel.value) !== q.max) || (memo && memo.value.trim());
+  }) || getCoachingText().trim();
+  return !touched || confirm("이미 입력한 점수·메모·코칭 내용이 있어요. 1차 평가 결과로 덮어쓸까요?");
+}
+
+function findSttLine(e) {
+  const flat = String(e.text).replace(/\s+/g, "");
+  return sttLines.findIndex(l => l.text.replace(/\s+/g, "") === flat && (!e.time || !l.time || l.time === e.time));
+}
+
+// 자동(규칙) 채점·AI 채점 공통: items = [{index, score, status, reason, conf, evidence:[{time,speaker,text,verified}]}]
+function applyScoreItems(items, meta) {
+  document.querySelectorAll(".stt-line.cited").forEach(el => el.classList.remove("cited"));
+  let ded = 0, rev = 0, na = 0, firstDed = -1;
+
+  items.forEach(it => {
+    const i = it.index, q = QA_ITEMS[i];
+    if (!q) return;
+    const sel = document.getElementById(`qa-score-${i}`), memo = document.getElementById(`qa-memo-${i}`);
+    const flag = document.getElementById(`qa-flag-${i}`), hint = document.getElementById(`qa-hint-${i}`);
+    const status = it.status === "needs_review" || it.status === "not_applicable" ? it.status : "scored";
+    let score = Math.max(0, Math.min(q.max, Math.round(Number(it.score))));
+    if (isNaN(score) || status !== "scored") score = q.max;
+    sel.value = String(score);
+    sel.dataset.auto = String(score);
+    memo.value = "";
+    flag.className = "qa-flag hidden"; flag.textContent = "";
+    hint.className = "qa-hint hidden"; hint.textContent = "";
+
+    if (status === "needs_review") {
+      rev++;
+      flag.className = "qa-flag"; flag.textContent = "직접 확인";
+      hint.className = "qa-hint"; hint.textContent = "🔎 " + (it.reason || "텍스트만으로는 판단하기 어려워요.");
+    } else if (status === "not_applicable") {
+      na++;
+      flag.className = "qa-flag na"; flag.textContent = "해당 없음";
+      hint.className = "qa-hint"; hint.textContent = "ℹ️ " + (it.reason || "이 통화에는 적용되지 않는 항목이에요.");
+    } else {
+      if (it.conf === "low") { flag.className = "qa-flag est"; flag.textContent = "추정"; }
+      if (score < q.max) {
+        ded++; if (firstDed < 0) firstDed = i;
+        memo.value = scoreMemoText(it);
+        (it.evidence || []).forEach(e => { const k = findSttLine(e); if (k >= 0) document.getElementById(`stt-line-${k}`).classList.add("cited"); });
+      } else if (it.reason) {
+        hint.className = "qa-hint"; hint.style.color = "var(--mt)"; hint.textContent = "✓ " + it.reason;
+      }
+    }
+    onQaScoreChange(i);
+  });
+  if (firstDed >= 0) setCiteTarget(firstDed);
+
+  const typeLabel = { inbound: "인바운드", outbound: "아웃바운드" }[meta.callType] || "유형 불명";
+  const total = QA_ITEMS.reduce((s, q, i) => s + (Number(document.getElementById(`qa-score-${i}`).value) || 0), 0);
+  const box = document.getElementById("autoResult");
+  box.innerHTML = `<b>✅ ${esc(meta.label)} 적용</b> · 통화 유형: ${typeLabel} · 총점 ${total}/${QA_MAX_TOTAL} · 감점 ${ded}개 · 직접 확인 ${rev}개 · 해당 없음 ${na}개` +
+    (meta.summary ? `<div style="margin-top:6px;color:var(--mt);">${esc(meta.summary)}</div>` : "") +
+    `<div style="margin-top:6px;font-size:12px;color:var(--mt);">이제 녹취를 들으며 항목별 점수를 고쳐주세요. <b>수정한 점수가 최종 점수</b>로 저장·PDF에 반영돼요. 아래 코칭 내용도 초안으로 채워졌어요. ('추정'·'직접 확인' 항목을 우선 확인하세요)</div>`;
+  box.classList.remove("hidden");
+  document.getElementById("qaBody").scrollIntoView({ behavior: "smooth", block: "start" });
+  showToast("✅ 1차 채점이 반영됐어요. 내용을 확인해주세요!");
+}
+
+function runAutoScore() {
+  if (!sttLines.length) { showToast("녹취 파일을 먼저 불러와주세요.", true); return; }
+  if (!confirmOverwrite()) return;
+  const r = autoScoreStt(sttLines);
+  const items = r.items.map(it => ({
+    index: it.index, score: it.score, status: it.status, reason: it.reason, conf: it.conf,
+    evidence: it.ev.map(k => ({ time: sttLines[k].time, speaker: sttLines[k].speaker, text: sttLines[k].text, verified: true }))
+  }));
+  applyScoreItems(items, { callType: r.callType, label: "1차 평가(자동)" });
+  fillCoachingDraft();
+}
+
+function clearStt() {
+  sttLines = [];
+  const fl = document.getElementById("sttFile"); if (fl) fl.value = "";
+  const wrap = document.getElementById("sttWrap"); if (wrap) wrap.style.display = "none";
+  const emp = document.getElementById("sttEmpty"); if (emp) emp.style.display = "block";
+  const ar = document.getElementById("autoResult"); if (ar) { ar.classList.add("hidden"); ar.innerHTML = ""; }
+}
+
+function updateQaTotal() {
+  let total = 0;
+  QA_ITEMS.forEach((item, i) => {
+    const sel = document.getElementById(`qa-score-${i}`);
+    if (sel) total += Number(sel.value) || 0;
+  });
+  const badge = document.getElementById("qaTotalBadge");
+  if (badge) {
+    const g = qaGrade(total);
+    badge.innerHTML = `${total} / ${QA_MAX_TOTAL} <span style="background:${g.bg};color:${g.color};border-radius:999px;padding:2px 9px;font-size:12px;margin-left:6px;">${g.label}</span>`;
+  }
+  const fill = document.getElementById("qaTotalFill");
+  if (fill) fill.style.width = Math.min(100, (total / QA_MAX_TOTAL * 100)) + "%";
+}
+
+function styleSelect(sel) {
+  sel.className = "res-sel " + sel.value;
+}
+// 수정 모드 select에도 적용
+document.addEventListener("change", function(e) {
+  if (e.target && e.target.classList.contains("res-sel")) {
+    styleSelect(e.target);
+  }
+});
+
+function applyDateFilter() {
+  const d = document.getElementById("histDateFilter").value;
+  const badge = document.getElementById("filterBadge");
+  if (d) {
+    badge.style.display = "flex";
+    document.getElementById("filterLabel").textContent = d;
+    const allItems = document.querySelectorAll(".hist-item-wrap");
+    allItems.forEach(el => {
+      el.style.display = el.dataset.date === d ? "block" : "none";
+    });
+  } else {
+    clearDateFilter();
+  }
+}
+
+function clearDateFilter() {
+  document.getElementById("histDateFilter").value = "";
+  document.getElementById("filterBadge").style.display = "none";
+  document.querySelectorAll(".hist-item-wrap").forEach(el => { el.style.display = "block"; });
+}
+
+/* 이전 기록 → 새 기록으로 불러오기 */
+function fillPrevRecordSelect() {
+  const sel = document.getElementById("f-prevRecord");
+  if (!sel) return;
+  if (!historyRowsCache.length) { sel.innerHTML = `<option value="">저장된 기록이 없어요</option>`; return; }
+  sel.innerHTML = `<option value="">불러올 기록을 선택하세요</option>` + historyRowsCache.map((r, i) => {
+    const t = Number(r[4 + QA_ITEMS.length * 2]);
+    return `<option value="${i}">${r[2] || "-"} · 총점 ${isNaN(t) ? "-" : t}/${QA_MAX_TOTAL}</option>`;
+  }).join("");
+}
+
+function loadFromRecord() {
+  const sel = document.getElementById("f-prevRecord");
+  const r = sel && sel.value !== "" ? historyRowsCache[Number(sel.value)] : null;
+  if (!r) { showToast("불러올 기록을 먼저 선택해주세요.", true); return; }
+  if (formHasContent() && !confirm("지금 작성 중인 내용이 선택한 기록으로 바뀌어요. 계속할까요?")) return;
+  QA_ITEMS.forEach((q, i) => {
+    const s = document.getElementById(`qa-score-${i}`), m = document.getElementById(`qa-memo-${i}`);
+    const raw = Number(r[4 + i * 2]);
+    s.value = String(isNaN(raw) ? q.max : raw);
+    delete s.dataset.auto;
+    m.value = r[5 + i * 2] || "";
+    onQaScoreChange(i);
+  });
+  const base = 4 + QA_ITEMS.length * 2;
+  setCoachingText(r[base + 1] || "");
+  const fb = document.getElementById("f-feedback"), nt = document.getElementById("f-note"), mo = document.getElementById("f-monitor");
+  if (fb) fb.value = r[base + 2] || "";
+  if (nt) nt.value = r[base + 3] || "";
+  if (mo && !mo.value) mo.value = r[3] || "";
+  document.querySelectorAll("#tab-new textarea").forEach(autoGrow);
+  showToast("📋 불러왔어요. 평가 작성 일자는 새로 지정해주세요. (같은 날짜면 기존 기록을 덮어써요)", false);
+}
+
+/* 기록 삭제 */
+async function deleteRecord(idx, e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  const btn = e && e.currentTarget ? e.currentTarget : null;
+  const r = historyRowsCache[idx];
+  if (!r) { showToast("❌ 삭제할 기록을 찾지 못했어요. 새로고침 후 다시 시도해주세요.", true); return; }
+  // 확인창(confirm)이 막히는 환경이 있어서, 버튼을 한 번 더 누르는 방식으로 확인해요
+  if (btn && btn.dataset.armed !== "1") {
+    btn.dataset.armed = "1";
+    const old = btn.textContent;
+    btn.textContent = "⚠️ 한 번 더 누르면 삭제돼요";
+    setTimeout(() => { btn.dataset.armed = ""; btn.textContent = old; }, 4000);
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = "삭제 중..."; }
+  showToast("🗑 삭제 중이에요...", false);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "delete", member: currentMember.name, date: r[2] || "" })
+    });
+    const text = await res.text();
+    let result;
+    try { result = JSON.parse(text); } catch(_) { throw new Error("Apps Script 응답이 올바르지 않아요 (배포 설정 '모든 사용자' 확인)"); }
+    if (result.status === "ok") {
+      showToast("🗑 코칭 기록이 삭제되었습니다.", false);
+      await loadHistory();
+    } else {
+      throw new Error(result.message || "알 수 없는 오류");
+    }
+  } catch(err) {
+    showToast("❌ 삭제 실패: " + (err && err.message ? err.message : err), true);
+    if (btn) { btn.disabled = false; btn.textContent = "🗑 삭제"; btn.dataset.armed = ""; }
+  }
+}
+
+/* 수정 모드 열기 */
+function openEditMode(idx, e) {
+  e.stopPropagation();
+  document.querySelectorAll(".edit-mode").forEach((em,i) => { if(i!==idx) em.classList.remove("open"); });
+  const em = document.getElementById("emode-"+idx);
+  em.classList.toggle("open");
+  if (em.classList.contains("open")) em.querySelectorAll("textarea").forEach(autoGrow);
+}
+
+function closeEditMode(idx) {
+  document.getElementById("emode-"+idx).classList.remove("open");
+}
+
+async function saveEditMode(idx) {
+  const btn = document.querySelector(`#emode-${idx} .btn-edit-save`);
+  btn.textContent = "저장 중...";
+  btn.disabled = true;
+
+  const qa = QA_ITEMS.map((item, i) => ({
+    score: Number(document.getElementById(`em-qa-${idx}-${i}`).value) || 0,
+    memo:  document.getElementById(`em-qa-memo-${idx}-${i}`).value || ""
+  }));
+  const totalScore = qa.reduce((s, x) => s + x.score, 0);
+  const coaching = serializeCoaching(coachCollect("em" + idx));
+  const feedback = document.getElementById(`em-feedback-${idx}`).value;
+  const note = document.getElementById(`em-note-${idx}`).value;
+
+  const rowEl = document.querySelector(`#hdet-${idx}`).closest(".hist-item-wrap");
+  const date   = rowEl ? rowEl.dataset.date  : "";
+  const ukey   = rowEl ? rowEl.dataset.key   : "";
+
+  const payload = {
+    action:    "update",
+    uniqueKey: ukey,
+    member:    currentMember.name,
+    squad:     currentMember.squad,
+    date:      date,
+    monitor:   "",
+    qa,
+    totalScore,
+    coaching, feedback, note
+  };
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+    const result = await res.json();
+    if (result.status === "ok") {
+      showToast("✅ 수정사항이 저장되었습니다!", false);
+      closeEditMode(idx);
+      await loadHistory();
+      document.getElementById("hdet-"+idx)?.classList.add("open");
+      document.getElementById("chev-"+idx)?.classList.add("open");
+    } else { throw new Error(result.message); }
+  } catch(e) {
+    showToast("❌ 저장에 실패했어요.", true);
+  }
+  btn.textContent = "💾 저장";
+  btn.disabled = false;
+}
+
+function reportTableHead() {
+  const th = (al, w, t) => `<th style="text-align:${al};padding:8px 10px;background:#EAF3FA;color:#2E6088;font-size:12px;${w ? `width:${w};` : ""}border-bottom:1.5px solid #DCEEF9;">${t}</th>`;
+  return `<thead><tr>${th("left", "32%", "항목")}${th("center", "13%", "점수")}${th("left", "", "감점 사유 · 통화 구간 · 근거 발화")}</tr></thead>`;
+}
+
+/* 리포트를 '칸(블록)' 단위로 만들어요. 블록은 페이지 중간에서 절대 잘리지 않아요. */
+function buildReportBlocks(r, member) {
+  const qaVals = QA_ITEMS.map((item, i) => {
+    const raw = Number(r[4 + i * 2]);
+    const score = isNaN(raw) ? item.max : raw;
+    return { ...item, score, memo: r[5 + i * 2] || "" };
+  });
+  const totalRaw = Number(r[4 + QA_ITEMS.length * 2]);
+  const total = isNaN(totalRaw) ? qaVals.reduce((s, x) => s + x.score, 0) : totalRaw;
+  const grade = qaGrade(total);
+  const coaching = r[4 + QA_ITEMS.length * 2 + 1] || "";
+  const feedback = r[4 + QA_ITEMS.length * 2 + 2] || "";
+  const note     = r[4 + QA_ITEMS.length * 2 + 3] || "";
+
+  const blocks = [];
+  blocks.push({ type: "html", html: `
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #DCEEF9;padding-bottom:14px;margin-bottom:18px;">
+      <div>
+        <div style="font-size:20px;font-weight:700;">QA 코칭 기록</div>
+        <div style="font-size:13px;color:#64748B;margin-top:4px;">${esc(member.name)} · ${esc(member.squad)} · 평가 작성일 ${esc(r[2] || "-")}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:12px;color:#64748B;">총점</div>
+        <div style="font-size:28px;font-weight:700;color:#5B8DB8;">${total} / ${QA_MAX_TOTAL}</div>
+        <div style="display:inline-block;margin-top:4px;background:${grade.bg};color:${grade.color};font-size:12px;font-weight:700;padding:3px 12px;border-radius:999px;">${grade.label}</div>
+      </div>
+    </div>` });
+
+  let lastCat = null;
+  qaVals.forEach(x => {
+    let head = "";
+    if (x.cat !== lastCat) {
+      head = `<tr><td colspan="3" style="background:#F3F4F6;font-weight:700;padding:8px 10px;font-size:12px;">${esc(x.cat)}</td></tr>`;
+      lastCat = x.cat;
+    }
+    const color = x.score >= x.max ? "#065F46" : x.score === 0 ? "#991B1B" : "#92400E";
+    const bg    = x.score >= x.max ? "#ECFDF5" : x.score === 0 ? "#FEF2F2" : "#FFFBEB";
+    const memoHtml = x.memo ? memoViewHtml(x.memo, "pdf") : "";
+    blocks.push({ type: "row", html: `${head}<tr>
+      <td style="padding:9px 10px;border-bottom:1px solid #eee;font-size:12px;word-break:break-word;vertical-align:top;">${esc(x.name)}</td>
+      <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:center;background:${bg};color:${color};font-weight:700;font-size:12px;vertical-align:top;">${x.score} / ${x.max}</td>
+      <td style="padding:9px 10px;border-bottom:1px solid #eee;word-break:break-word;vertical-align:top;">${memoHtml || `<span style="color:#94A3B8;font-size:11px;">-</span>`}</td>
+    </tr>` });
+  });
+
+  coachingBlocks(coaching, "pdf").forEach(h => blocks.push({ type: "html", html: `<div style="margin-top:14px;">${h}</div>` }));
+  const sec = (label, v) => v ? { type: "html", html: `<div style="margin:6px 0 14px;"><div style="font-size:11px;font-weight:700;color:#64748B;margin-bottom:6px;">${label}</div><div style="font-size:13px;white-space:pre-wrap;">${esc(v)}</div></div>` } : null;
+  [sec("추후 피드백 예정", feedback), sec("비고", note)].filter(Boolean).forEach(b => blocks.push(b));
+  return blocks;
+}
+
+/* 한 덩어리 HTML (미리보기·검증용) */
+function buildReportHtml(r, member) {
+  let h = "", inRows = false;
+  const close = () => { if (inRows) { h += "</tbody></table>"; inRows = false; } };
+  buildReportBlocks(r, member).forEach(b => {
+    if (b.type === "row") {
+      if (!inRows) { h += `<table style="width:100%;table-layout:fixed;border-collapse:collapse;">${reportTableHead()}<tbody>`; inRows = true; }
+      h += b.html;
+    } else { close(); h += b.html; }
+  });
+  close();
+  return h;
+}
+
+/* 블록을 A4 한 페이지 높이(limit px)에 맞춰 페이지별로 쌓아요. 넘치면 블록 통째로 다음 페이지로 보내요. */
+function paginateReport(blocks, stage, W, limit) {
+  const pages = [];
+  let page = null, tbody = null;
+  const newPage = () => {
+    page = document.createElement("div");
+    page.style.cssText = `box-sizing:border-box;width:${W}px;padding:24px;background:#fff;font-family:'Noto Sans KR',sans-serif;color:#0F172A;margin:0 auto 16px;`;
+    stage.appendChild(page); pages.push(page); tbody = null;
+  };
+  const fits = () => page.offsetHeight <= limit;
+  const tryAdd = b => {
+    if (b.type === "row") {
+      let fresh = false;
+      if (!tbody) {
+        const t = document.createElement("table");
+        t.style.cssText = "width:100%;table-layout:fixed;border-collapse:collapse;";
+        t.innerHTML = reportTableHead() + "<tbody></tbody>";
+        page.appendChild(t); tbody = t.tBodies[0]; fresh = true;
+      }
+      const n0 = tbody.children.length;
+      tbody.insertAdjacentHTML("beforeend", b.html);
+      if (fits()) return true;
+      [...tbody.children].slice(n0).forEach(n => n.remove());
+      if (fresh) { tbody.closest("table").remove(); tbody = null; }
+      return false;
+    }
+    tbody = null;
+    const holder = document.createElement("div");
+    holder.innerHTML = b.html;
+    const nodes = [...holder.childNodes];
+    nodes.forEach(n => page.appendChild(n));
+    if (fits()) return true;
+    nodes.forEach(n => n.remove());
+    return false;
+  };
+  blocks.forEach(b => {
+    if (!page) newPage();
+    if (tryAdd(b)) return;
+    if (page.children.length) newPage();          // 이 페이지에 이미 내용이 있으면 새 페이지에서 다시
+    if (!tryAdd(b)) {                              // 한 페이지보다 큰 블록: 어쩔 수 없이 그대로 넣기
+      if (b.type === "row") {
+        const t = document.createElement("table");
+        t.style.cssText = "width:100%;table-layout:fixed;border-collapse:collapse;";
+        t.innerHTML = reportTableHead() + "<tbody></tbody>"; page.appendChild(t); tbody = t.tBodies[0];
+        tbody.insertAdjacentHTML("beforeend", b.html);
+      } else { const h = document.createElement("div"); h.innerHTML = b.html; page.appendChild(h); }
+    }
+  });
+  return pages;
+}
+
+async function downloadPdf(idx, e) {
+  if (e) e.stopPropagation();
+  const r = historyRowsCache[idx];
+  if (!r || typeof html2pdf === "undefined") {
+    showToast("❌ PDF 생성 라이브러리를 불러오지 못했어요.", true);
+    return;
+  }
+  const W = 718, LIMIT = 1010;      // A4(여백 10mm) 안쪽 폭 190mm ≈ 718px, 안쪽 높이 ≈ 1046px → 여유를 두고 1010px
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:#fff;z-index:99999;overflow:auto;padding:20px;";
+  const stage = document.createElement("div");
+  overlay.appendChild(stage);
+  document.body.appendChild(overlay);
+  try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const pages = paginateReport(buildReportBlocks(r, currentMember), stage, W, LIMIT);
+    await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+
+    const opt = {
+      margin: 10, image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+    };
+    const pdf = await html2pdf().set(opt).from(pages[0]).toPdf().get("pdf");
+    for (let k = 1; k < pages.length; k++) {
+      const canvas = await html2pdf().set(opt).from(pages[k]).toCanvas().get("canvas");
+      let w = 190, h = canvas.height * w / canvas.width;
+      if (h > 277) { w = w * 277 / h; h = 277; }
+      pdf.addPage();
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 10, 10, w, h);
+    }
+    pdf.save(`QA코칭_${currentMember.name}_${r[2] || "date"}.pdf`);
+  } catch (err) {
+    console.error(err);
+    showToast("❌ PDF 생성에 실패했어요.", true);
+  } finally {
+    document.body.removeChild(overlay);
+  }
+}
+
+function toggleHist(idx) {
+  const det  = document.getElementById("hdet-" + idx);
+  const chev = document.getElementById("chev-" + idx);
+  const open = det.classList.toggle("open");
+  chev.classList.toggle("open", open);
+}
+
+function setToday() {
+  const el = document.getElementById("f-date");
+  if (el) {
+    const t = new Date();
+    const yy = t.getFullYear();
+    const mm = String(t.getMonth()+1).padStart(2,"0");
+    const dd = String(t.getDate()).padStart(2,"0");
+    el.value = yy+"-"+mm+"-"+dd;
+  }
+}
+
+function resetForm() {
+  setToday();
+  document.getElementById("f-monitor").value = "";
+  buildQaBody();
+  clearStt();
+  setCoachingText("");
+  ["f-feedback","f-note"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("tab-" + id).classList.add("active");
+  const fd = document.getElementById("floatDraft");
+  if (fd) fd.classList.toggle("visible", id === "new");
+}
+
+/* ── 임시저장 (사이드바) ── */
+const DRAFTS_STORE = "cx_drafts_v2";
+
+function getDrafts() {
+  try { return JSON.parse(localStorage.getItem(DRAFTS_STORE) || "[]"); } catch(e) { return []; }
+}
+function setDrafts(arr) {
+  // 저장 공간이 모자라면 오래된 임시저장부터 줄여가며 다시 시도해요
+  for (let n = arr.length; n >= 1; n--) {
+    try { localStorage.setItem(DRAFTS_STORE, JSON.stringify(arr.slice(0, n))); return true; } catch(e) {}
+  }
+  return false;
+}
+
+function formHasContent() {
+  const qa = QA_ITEMS.some((q, i) => {
+    const sel = document.getElementById(`qa-score-${i}`), memo = document.getElementById(`qa-memo-${i}`);
+    return (sel && Number(sel.value) !== q.max) || (memo && memo.value.trim());
+  });
+  return !!(qa || getCoachingText().trim() || sttLines.length);
+}
+
+function captureFormState() {
+  const qa = QA_ITEMS.map((q, i) => {
+    const sel = document.getElementById(`qa-score-${i}`), memo = document.getElementById(`qa-memo-${i}`);
+    const flag = document.getElementById(`qa-flag-${i}`), hint = document.getElementById(`qa-hint-${i}`);
+    return { score: Number(sel.value), memo: memo.value, auto: sel.dataset.auto === undefined ? null : Number(sel.dataset.auto),
+             flag: [flag.className, flag.textContent], hint: [hint.className, hint.textContent, hint.style.color || ""] };
+  });
+  const ar = document.getElementById("autoResult");
+  return {
+    qa, stt: sttLines,
+    cited: [...document.querySelectorAll(".stt-line.cited")].map(el => Number(el.id.replace("stt-line-", ""))),
+    target: citeTarget,
+    autoResult: ar && !ar.classList.contains("hidden") ? ar.innerHTML : ""
+  };
+}
+
+function restoreFormState(st) {
+  sttLines = Array.isArray(st.stt) ? st.stt : [];
+  renderStt();
+  (st.qa || []).forEach((q, i) => {
+    if (!QA_ITEMS[i]) return;
+    const sel = document.getElementById(`qa-score-${i}`), memo = document.getElementById(`qa-memo-${i}`);
+    const flag = document.getElementById(`qa-flag-${i}`), hint = document.getElementById(`qa-hint-${i}`);
+    sel.value = String(q.score);
+    if (q.auto !== null && q.auto !== undefined) sel.dataset.auto = String(q.auto);
+    memo.value = q.memo || "";
+    flag.className = (q.flag && q.flag[0]) || "qa-flag hidden"; flag.textContent = (q.flag && q.flag[1]) || "";
+    hint.className = (q.hint && q.hint[0]) || "qa-hint hidden"; hint.textContent = (q.hint && q.hint[1]) || "";
+    hint.style.color = (q.hint && q.hint[2]) || "";
+    onQaScoreChange(i);
+  });
+  (st.cited || []).forEach(k => { const el = document.getElementById(`stt-line-${k}`); if (el) el.classList.add("cited"); });
+  setCiteTarget(st.target || 0);
+  const ar = document.getElementById("autoResult");
+  if (ar && st.autoResult) { ar.innerHTML = st.autoResult; ar.classList.remove("hidden"); }
+}
+
+function saveDraft() {
+  if (!currentMember) return;
+  const draft = Object.assign({
+    id:       Date.now(),
+    member:   currentMember.name,
+    squad:    currentMember.squad,
+    date:     document.getElementById("f-date")?.value || "",
+    monitor:  document.getElementById("f-monitor")?.value || "",
+    coaching: getCoachingText(),
+    feedback: document.getElementById("f-feedback")?.value || "",
+    note:     document.getElementById("f-note")?.value || "",
+    savedAt:  new Date().toLocaleString("ko-KR")
+  }, captureFormState());
+  const drafts = getDrafts();
+  const idx = drafts.findIndex(d => d.member === draft.member && d.date === draft.date);
+  if (idx >= 0) drafts[idx] = draft;
+  else drafts.unshift(draft);
+  if (!setDrafts(drafts.slice(0, 20))) { showToast("❌ 임시저장 공간이 부족해요. 오래된 임시저장을 삭제해주세요.", true); return; }
+  renderDraftSidebar();
+  showToast("💾 임시저장 완료! 점수·메모·녹취록까지 저장했어요. (" + draft.savedAt + ")", false);
+}
+
+async function loadDraftById(id) {
+  const d = getDrafts().find(x => x.id === id);
+  if (!d) { showToast("임시저장을 찾지 못했어요.", true); return; }
+  if (formHasContent() && !confirm("지금 작성 중인 내용이 있어요. 이 임시저장 내용으로 바꿀까요?")) return;
+
+  const sameMember = currentMember && currentMember.name === d.member && document.getElementById("appScreen").style.display !== "none";
+  if (!sameMember) {                      // 다른 팀원(또는 팀원 선택 화면)이면 그 팀원 화면으로 먼저 이동
+    const m = allMembers.find(x => x.name === d.member) || { name: d.member, squad: d.squad || "" };
+    showMemberScreen(m);
+    loadHistory();
+  }
+  switchTab("new", document.querySelectorAll(".tab-btn")[0]);
+  buildQaBody(); clearStt();              // 깨끗한 상태에서 복원
+  document.getElementById("f-date").value    = d.date || document.getElementById("f-date").value;
+  document.getElementById("f-monitor").value = d.monitor || "";
+  const hasQa = Array.isArray(d.qa);
+  if (hasQa) restoreFormState(d);
+  setCoachingText(d.coaching || "");
+  const fb = document.getElementById("f-feedback"), nt = document.getElementById("f-note");
+  fb.value = d.feedback || ""; nt.value = d.note || ""; autoGrow(fb); autoGrow(nt);
+  toggleDraftSidebar(false);
+  showToast(hasQa ? "📋 임시저장 내용을 불러왔어요!" : "📋 불러왔어요. (예전 임시저장이라 점수·녹취는 저장돼 있지 않아요)", false);
+}
+
+function deleteDraftById(id) {
+  setDrafts(getDrafts().filter(d => d.id !== id));
+  renderDraftSidebar();
+  showToast("🗑 임시저장이 삭제되었어요.", false);
+}
+
+function renderDraftSidebar() {
+  const drafts = getDrafts();
+  const list = document.getElementById("draftSidebarList");
+  const btn  = document.getElementById("floatListBtn");
+  const cnt  = document.getElementById("floatDraftCount");
+  if (!list) return;
+  if (!drafts.length) {
+    list.innerHTML = '<div class="sb-empty">저장된 내용이 없어요.</div>';
+    if (btn) btn.classList.remove("on");
+    return;
+  }
+  if (btn) { btn.classList.add("on"); }
+  if (cnt) { cnt.textContent = "임시저장 " + drafts.length + "개"; }
+  list.innerHTML = drafts.map(d => `
+    <div class="draft-item" onclick="loadDraftById(${d.id})">
+      <button class="draft-item-del" onclick="event.stopPropagation();deleteDraftById(${d.id})">✕</button>
+      <div class="draft-item-name">${d.member}</div>
+      <div class="draft-item-time">${d.date||"-"}${Array.isArray(d.qa) ? " · 총점 " + d.qa.reduce((a, x) => a + (Number(x.score) || 0), 0) + "/100" : ""}<br/>${d.savedAt}</div>
+    </div>`).join("");
+}
+
+function toggleDraftSidebar(forceClose) {
+  const sb = document.getElementById("draftSidebar");
+  if (!sb) return;
+  if (forceClose === false) { sb.classList.remove("open"); return; }
+  sb.classList.toggle("open");
+}
+
+function checkDraft() { renderDraftSidebar(); }
+
+function showToast(msg, isErr) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className   = "toast " + (isErr ? "err" : "ok");
+  t.style.display = "flex";
+  setTimeout(() => { t.style.display = "none"; }, 3500);
+}
+</script>
+</body>
+</html>
