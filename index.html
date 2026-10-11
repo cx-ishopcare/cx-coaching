@@ -534,6 +534,13 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
             <div class="field"><label>평가 작성 일자</label><input type="date" id="f-date"/></div>
             <div class="field"><label>모니터링 진행자</label><input type="text" id="f-monitor" placeholder="진행자 이름"/></div>
           </div>
+          <div class="field" style="margin-top:12px;">
+            <label>📋 이전 기록 불러오기 <span style="font-weight:400;color:#94a3b8;">(점수·메모·코칭 내용을 복사해서 새 기록으로 시작해요)</span></label>
+            <div style="display:flex;gap:8px;">
+              <select id="f-prevRecord" style="flex:1;min-width:0;"><option value="">저장된 기록이 없어요</option></select>
+              <button type="button" class="btn-edit" onclick="loadFromRecord()">불러오기</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -798,6 +805,7 @@ async function loadHistory() {
 
     rows.sort((a, b) => (b[2] || "").localeCompare(a[2] || ""));
     historyRowsCache = rows;
+    fillPrevRecordSelect();
 
     list.innerHTML = rows.map((r, idx) => {
       const qaVals = QA_ITEMS.map((item, i) => {
@@ -846,7 +854,7 @@ async function loadHistory() {
           </div>
           <div class="hist-detail" id="hdet-${idx}">
             <div class="hist-action-bar">
-              <button class="btn-delete" onclick="deleteRecord('${ukey}', '${r[2]||''}', ${idx}, event)">🗑 삭제</button>
+              <button class="btn-delete" onclick="deleteRecord(${idx}, event)">🗑 삭제</button>
               <button class="btn-edit" onclick="openEditMode(${idx}, event)">✏️ 수정</button>
               <button class="btn-edit" onclick="downloadPdf(${idx}, event)">📄 PDF 저장</button>
             </div>
@@ -1768,29 +1776,73 @@ function clearDateFilter() {
   document.querySelectorAll(".hist-item-wrap").forEach(el => { el.style.display = "block"; });
 }
 
+/* 이전 기록 → 새 기록으로 불러오기 */
+function fillPrevRecordSelect() {
+  const sel = document.getElementById("f-prevRecord");
+  if (!sel) return;
+  if (!historyRowsCache.length) { sel.innerHTML = `<option value="">저장된 기록이 없어요</option>`; return; }
+  sel.innerHTML = `<option value="">불러올 기록을 선택하세요</option>` + historyRowsCache.map((r, i) => {
+    const t = Number(r[4 + QA_ITEMS.length * 2]);
+    return `<option value="${i}">${r[2] || "-"} · 총점 ${isNaN(t) ? "-" : t}/${QA_MAX_TOTAL}</option>`;
+  }).join("");
+}
+
+function loadFromRecord() {
+  const sel = document.getElementById("f-prevRecord");
+  const r = sel && sel.value !== "" ? historyRowsCache[Number(sel.value)] : null;
+  if (!r) { showToast("불러올 기록을 먼저 선택해주세요.", true); return; }
+  if (formHasContent() && !confirm("지금 작성 중인 내용이 선택한 기록으로 바뀌어요. 계속할까요?")) return;
+  QA_ITEMS.forEach((q, i) => {
+    const s = document.getElementById(`qa-score-${i}`), m = document.getElementById(`qa-memo-${i}`);
+    const raw = Number(r[4 + i * 2]);
+    s.value = String(isNaN(raw) ? q.max : raw);
+    delete s.dataset.auto;
+    m.value = r[5 + i * 2] || "";
+    onQaScoreChange(i);
+  });
+  const base = 4 + QA_ITEMS.length * 2;
+  setCoachingText(r[base + 1] || "");
+  const fb = document.getElementById("f-feedback"), nt = document.getElementById("f-note"), mo = document.getElementById("f-monitor");
+  if (fb) fb.value = r[base + 2] || "";
+  if (nt) nt.value = r[base + 3] || "";
+  if (mo && !mo.value) mo.value = r[3] || "";
+  document.querySelectorAll("#tab-new textarea").forEach(autoGrow);
+  showToast("📋 불러왔어요. 평가 작성 일자는 새로 지정해주세요. (같은 날짜면 기존 기록을 덮어써요)", false);
+}
+
 /* 기록 삭제 */
-async function deleteRecord(ukey, date, idx, e) {
-  e.stopPropagation();
-  if (!confirm("이 코칭 기록을 삭제할까요?")) return;
+async function deleteRecord(idx, e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  const btn = e && e.currentTarget ? e.currentTarget : null;
+  const r = historyRowsCache[idx];
+  if (!r) { showToast("❌ 삭제할 기록을 찾지 못했어요. 새로고침 후 다시 시도해주세요.", true); return; }
+  // 확인창(confirm)이 막히는 환경이 있어서, 버튼을 한 번 더 누르는 방식으로 확인해요
+  if (btn && btn.dataset.armed !== "1") {
+    btn.dataset.armed = "1";
+    const old = btn.textContent;
+    btn.textContent = "⚠️ 한 번 더 누르면 삭제돼요";
+    setTimeout(() => { btn.dataset.armed = ""; btn.textContent = old; }, 4000);
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = "삭제 중..."; }
+  showToast("🗑 삭제 중이에요...", false);
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({
-        action:    "delete",
-        uniqueKey: ukey,
-        member:    currentMember.name,
-        date:      date
-      })
+      body: JSON.stringify({ action: "delete", member: currentMember.name, date: r[2] || "" })
     });
-    const result = await res.json();
+    const text = await res.text();
+    let result;
+    try { result = JSON.parse(text); } catch(_) { throw new Error("Apps Script 응답이 올바르지 않아요 (배포 설정 '모든 사용자' 확인)"); }
     if (result.status === "ok") {
       showToast("🗑 코칭 기록이 삭제되었습니다.", false);
       await loadHistory();
     } else {
-      throw new Error(result.message);
+      throw new Error(result.message || "알 수 없는 오류");
     }
   } catch(err) {
-    showToast("❌ 삭제 실패: " + (err && err.message ? err.message : "Apps Script 새 버전 배포를 확인해주세요"), true);
+    showToast("❌ 삭제 실패: " + (err && err.message ? err.message : err), true);
+    if (btn) { btn.disabled = false; btn.textContent = "🗑 삭제"; btn.dataset.armed = ""; }
   }
 }
 
